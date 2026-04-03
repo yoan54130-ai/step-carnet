@@ -860,8 +860,8 @@ function showSessDetail(el){
 // MODÉRATEUR
 // ══════════════════════════════════════════════════════
 async function renderModerateur(){
-  var apiKey=LOCAL.get('step_api_key');
-  var st=document.getElementById('apiKeyStatus');if(st)st.textContent=apiKey?'✅ Clé enregistrée sur cet appareil':'';
+  var apiKey=await getConfig('api_key');
+  var st=document.getElementById('apiKeyStatus');if(st)st.textContent=apiKey?'✅ Clé enregistrée — active sur tous les appareils':'';
   await renderModStudents();
 }
 async function renderModStudents(){
@@ -876,7 +876,7 @@ async function renderModStudents(){
   }).join('')+'</div>';
 }
 function toggleApiKeyMod(){var i=document.getElementById('apiKeyMod');if(i)i.type=i.type==='password'?'text':'password';}
-function saveApiKey(){var v=document.getElementById('apiKeyMod').value.trim();if(!v){showToast('❌ Clé vide',true);return;}LOCAL.set('step_api_key',v);document.getElementById('apiKeyStatus').textContent='✅ Clé enregistrée sur cet appareil';showToast('✅ Clé API enregistrée !');}
+async function saveApiKey(){var v=document.getElementById('apiKeyMod').value.trim();if(!v){showToast('❌ Clé vide',true);return;}showLoading('Enregistrement…');var ok=await setConfig('api_key',v);hideLoading();if(ok){document.getElementById('apiKeyStatus').textContent='✅ Clé enregistrée — disponible sur tous les appareils';showToast('✅ Clé API enregistrée !');}else{showToast('❌ Erreur d\'enregistrement',true);}}
 
 // ══════════════════════════════════════════════════════
 // SCAN
@@ -893,7 +893,7 @@ async function analyzeImg(){
   document.getElementById('aiProgressWrap').style.display='block';document.getElementById('extractedWrap').style.display='none';document.getElementById('scanErrWrap').style.display='none';
   var steps=['Envoi de l\'image…','Lecture de l\'écriture…','Extraction des données…','Finalisation…'];
   var si=0,prog=0;var iv=setInterval(function(){prog=Math.min(prog+18,85);document.getElementById('aiBar').style.width=prog+'%';if(si<steps.length)document.getElementById('aiLog').textContent=steps[si++];},700);
-  var apiKey=LOCAL.get('step_api_key')||'';
+  var apiKey=await getConfig('api_key')||'';
   var prompt='Tu lis un carnet d\'entraînement step Bac Pro manuscrit. Extrais toutes les données visibles.\nRéponds UNIQUEMENT avec ce JSON (sans markdown) :\n{"num":null,"date":null,"theme":null,"fcCible":null,"blocs":null,"sequences":[{"seq":"","ressenti":0,"fcFin":null,"regulation":null}],"objectif":null,"confidence":"haute|moyenne|basse","notes":null}\nPour le thème, utilise exactement : "Thème 1 — Puissance Aérobie", "Thème 2 — Capacité Aérobie" ou "Thème 3 — Endurance Fondamentale".\nSi tu ne peux pas lire une valeur, mets null.';
   try{
     if(!apiKey)throw new Error('NO_KEY');
