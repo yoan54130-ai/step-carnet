@@ -897,9 +897,10 @@ async function analyzeImg(){
   var prompt='Tu lis un carnet d\'entraînement step Bac Pro manuscrit. Extrais toutes les données visibles.\nRéponds UNIQUEMENT avec ce JSON (sans markdown) :\n{"num":null,"date":null,"theme":null,"fcCible":null,"blocs":null,"sequences":[{"seq":"","ressenti":0,"fcFin":null,"regulation":null}],"objectif":null,"confidence":"haute|moyenne|basse","notes":null}\nPour le thème, utilise exactement : "Thème 1 — Puissance Aérobie", "Thème 2 — Capacité Aérobie" ou "Thème 3 — Endurance Fondamentale".\nSi tu ne peux pas lire une valeur, mets null.';
   try{
     if(!apiKey)throw new Error('NO_KEY');
-    var res=await fetch(SB_URL+'/functions/v1/anthropic-proxy',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+SB_KEY},body:JSON.stringify({apiKey:apiKey,model:'claude-sonnet-4-20250514',max_tokens:1200,messages:[{role:'user',content:[{type:'image',source:{type:'base64',media_type:'image/jpeg',data:scanBase64}},{type:'text',text:prompt}]}]})});
+    var proxyUrl=SB_URL+'/functions/v1/anthropic-proxy';
+    var res=await fetch(proxyUrl,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+SB_KEY,'apikey':SB_KEY},body:JSON.stringify({apiKey:apiKey,model:'claude-sonnet-4-20250514',max_tokens:1200,messages:[{role:'user',content:[{type:'image',source:{type:'base64',media_type:'image/jpeg',data:scanBase64}},{type:'text',text:prompt}]}]})});
+    if(!res.ok){var errTxt=await res.text().catch(function(){return'';});throw new Error('Proxy erreur '+res.status+' : '+errTxt.slice(0,120));}
     clearInterval(iv);document.getElementById('aiBar').style.width='100%';
-    if(!res.ok){var err=await res.json().catch(function(){return{};});throw new Error(err.error&&err.error.message?err.error.message:'Erreur API '+res.status);}
     var data=await res.json();var text=data.content.map(function(c){return c.text||'';}).join('');
     var parsed;try{parsed=JSON.parse(text.replace(/```json|```/g,'').trim());}catch(e){throw new Error('Réponse IA invalide.');}
     scanExtracted=parsed;showExtracted(parsed);
