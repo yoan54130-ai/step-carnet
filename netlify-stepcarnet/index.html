@@ -1,0 +1,2291 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
+<title>StepCarnet · Bac Pro EPS</title>
+<style>
+/* ─── TOKENS ─────────────────────────────────────────── */
+:root{
+  --ink:#0a0a0f;--ink2:#12121a;--ink3:#1c1b28;--ink4:#252338;
+  --line:#2d2b42;--line2:#3d3a56;
+  --txt:#f0eff8;--txt2:#a09ec0;--txt3:#6b6890;
+  --a:#6c5ce7;--b:#00cec9;--c:#fd79a8;--d:#fdcb6e;
+  --g:#00b894;--r:#d63031;
+  --radius:14px;--radius-sm:9px;--radius-lg:22px;
+  --sb:env(safe-area-inset-bottom,0px);
+  --st:env(safe-area-inset-top,0px);
+  --shadow:0 4px 24px rgba(0,0,0,.45);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;
+  -webkit-font-smoothing:antialiased}
+html,body{height:100%;background:var(--ink);color:var(--txt);
+  font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  overflow-x:hidden;overscroll-behavior:none}
+a{color:inherit;text-decoration:none}
+button{font-family:inherit;cursor:pointer}
+input,select,textarea{font-family:inherit}
+
+/* ─── LOADING SCREEN ─────────────────────────────────── */
+#splash{position:fixed;inset:0;background:var(--ink);z-index:9999;
+  display:flex;align-items:center;justify-content:center;flex-direction:column;gap:16px;
+  transition:opacity .4s}
+#splash.hidden{opacity:0;pointer-events:none}
+.splash-logo{width:72px;height:72px;border-radius:20px;
+  background:linear-gradient(135deg,var(--a),var(--b));
+  display:flex;align-items:center;justify-content:center;font-size:32px;
+  animation:logoIn .6s cubic-bezier(.34,1.56,.64,1)}
+@keyframes logoIn{from{transform:scale(.5);opacity:0}to{transform:scale(1);opacity:1}}
+.splash-title{font-size:1.6rem;font-weight:800;letter-spacing:-.02em;
+  background:linear-gradient(90deg,var(--a),var(--b));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.splash-bar{width:120px;height:3px;background:var(--line);border-radius:2px;overflow:hidden;margin-top:8px}
+.splash-bar-fill{height:100%;background:linear-gradient(90deg,var(--a),var(--b));
+  border-radius:2px;animation:barFill 1.2s ease forwards}
+@keyframes barFill{from{width:0}to{width:100%}}
+
+/* ─── SCREENS (auth) ─────────────────────────────────── */
+.screen{display:none;position:fixed;inset:0;z-index:500;background:var(--ink);
+  overflow-y:auto;padding:max(24px,var(--st)) 16px 24px;
+  flex-direction:column;align-items:center;justify-content:flex-start}
+.screen.active{display:flex}
+.auth-wrap{width:100%;max-width:380px;margin:auto 0}
+
+/* ─── WELCOME ─────────────────────────────────────────── */
+.welcome-hero{text-align:center;margin-bottom:32px}
+.welcome-icon{width:80px;height:80px;border-radius:24px;margin:0 auto 16px;
+  background:linear-gradient(135deg,var(--a),var(--b));
+  display:flex;align-items:center;justify-content:center;font-size:36px;
+  box-shadow:0 8px 32px rgba(108,92,231,.4);
+  animation:logoIn .5s cubic-bezier(.34,1.56,.64,1)}
+.welcome-title{font-size:2rem;font-weight:900;letter-spacing:-.03em;
+  background:linear-gradient(135deg,var(--txt),var(--txt2));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.welcome-sub{color:var(--txt3);font-size:.85rem;margin-top:4px}
+.choice-stack{display:flex;flex-direction:column;gap:10px}
+.choice-btn{padding:16px;border-radius:var(--radius);border:1px solid var(--line2);
+  background:var(--ink3);color:var(--txt);font-size:.95rem;font-weight:600;
+  display:flex;align-items:center;gap:12px;text-align:left;transition:all .15s}
+.choice-btn:active{transform:scale(.97)}
+.choice-btn.primary{background:linear-gradient(135deg,var(--a),#4a00e0);border:none;
+  box-shadow:0 4px 20px rgba(108,92,231,.4)}
+.choice-btn .cb-icon{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;
+  justify-content:center;font-size:1.2rem;background:rgba(255,255,255,.1);flex-shrink:0}
+.choice-btn.primary .cb-icon{background:rgba(255,255,255,.2)}
+.choice-btn-text{flex:1}
+.choice-btn-label{font-size:.95rem;font-weight:700}
+.choice-btn-sub{font-size:.75rem;color:var(--txt2);margin-top:1px}
+.choice-btn.primary .choice-btn-sub{color:rgba(255,255,255,.7)}
+.divider{display:flex;align-items:center;gap:10px;color:var(--txt3);font-size:.75rem;margin:4px 0}
+.divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--line)}
+.link-btn{background:none;border:none;color:var(--txt3);font-size:.78rem;text-decoration:underline;
+  margin-top:18px;align-self:center;padding:6px}
+.link-btn:hover{color:var(--b)}
+
+/* ─── FORM FIELDS ─────────────────────────────────────── */
+.field{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
+.field label{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--txt2);font-weight:600}
+.field input,.field select,.field textarea{background:var(--ink3);border:1.5px solid var(--line);
+  border-radius:var(--radius-sm);padding:13px 14px;color:var(--txt);font-size:.92rem;
+  transition:border-color .15s;width:100%}
+.field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--a)}
+.field select option{background:var(--ink3)}
+.field textarea{resize:vertical;min-height:72px;line-height:1.5}
+
+/* ─── BACK LINK ────────────────────────────────────────── */
+.back-btn{display:inline-flex;align-items:center;gap:6px;color:var(--txt3);
+  font-size:.82rem;background:none;border:none;margin-bottom:20px;padding:4px 0}
+.back-btn:hover{color:var(--txt)}
+.auth-title{font-size:1.5rem;font-weight:800;letter-spacing:-.02em;margin-bottom:4px}
+.auth-sub{font-size:.82rem;color:var(--txt3);margin-bottom:24px;line-height:1.5}
+
+/* ─── PIN PAD ──────────────────────────────────────────── */
+.pin-display{display:flex;gap:12px;justify-content:center;margin-bottom:20px}
+.pin-dot{width:16px;height:16px;border-radius:50%;background:var(--line2);
+  transition:all .12s;position:relative}
+.pin-dot.filled{background:var(--a);transform:scale(1.1)}
+.pin-dot.error{background:var(--r);animation:shake .3s}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+.pin-err{text-align:center;font-size:.8rem;color:var(--r);min-height:18px;margin-bottom:12px}
+.numpad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;max-width:260px;margin:0 auto}
+.nk{padding:18px 10px;border-radius:var(--radius);background:var(--ink3);border:1.5px solid var(--line);
+  color:var(--txt);font-size:1.25rem;font-weight:700;transition:all .1s;letter-spacing:.02em}
+.nk:active{transform:scale(.91);background:var(--a);border-color:var(--a);color:white}
+.nk.nk-zero{grid-column:2}.nk.nk-del{color:var(--txt2);font-size:1rem}
+
+/* ─── CODE REVEAL ──────────────────────────────────────── */
+.code-reveal{background:linear-gradient(135deg,rgba(0,206,201,.1),rgba(108,92,231,.1));
+  border:1.5px solid var(--b);border-radius:var(--radius);padding:24px;text-align:center;margin:20px 0}
+.code-label{font-size:.72rem;text-transform:uppercase;letter-spacing:.1em;color:var(--txt2);margin-bottom:8px}
+.code-digits{font-size:3rem;font-weight:900;letter-spacing:.3em;
+  background:linear-gradient(90deg,var(--a),var(--b));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.code-warn{font-size:.78rem;color:var(--c);margin-top:8px}
+
+/* ─── TEACHER LOGIN ─────────────────────────────────────── */
+.pwd-row{display:flex;gap:8px;margin-bottom:8px}
+.pwd-row input{flex:1;min-width:0;background:var(--ink3);border:1.5px solid var(--line);
+  border-radius:var(--radius-sm);padding:13px 14px;color:var(--txt);font-size:.92rem}
+.pwd-row input:focus{outline:none;border-color:var(--a)}
+.pwd-eye{background:var(--ink3);border:1.5px solid var(--line);border-radius:var(--radius-sm);
+  padding:13px 14px;color:var(--txt2)}
+
+/* ─── APP SHELL ─────────────────────────────────────────── */
+#app{display:none;height:100%;flex-direction:column}
+#app.active{display:flex}
+
+.topbar{height:calc(52px + var(--st));padding-top:var(--st);
+  background:rgba(10,10,15,.85);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  border-bottom:1px solid var(--line);display:flex;align-items:flex-end;
+  padding-bottom:0;position:sticky;top:0;z-index:100;flex-shrink:0}
+.topbar-inner{display:flex;align-items:center;justify-content:space-between;
+  padding:0 16px;height:52px;width:100%}
+.tb-logo{display:flex;align-items:center;gap:8px}
+.tb-icon{width:28px;height:28px;border-radius:7px;
+  background:linear-gradient(135deg,var(--a),var(--b));
+  display:flex;align-items:center;justify-content:center;font-size:14px}
+.tb-name{font-size:.95rem;font-weight:800;letter-spacing:-.02em;
+  background:linear-gradient(90deg,var(--a),var(--b));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.tb-user{display:flex;align-items:center;gap:8px}
+.tb-avatar{width:28px;height:28px;border-radius:50%;
+  background:linear-gradient(135deg,var(--a),var(--b));
+  display:flex;align-items:center;justify-content:center;
+  font-size:.75rem;font-weight:800;color:white;flex-shrink:0}
+.tb-uname{font-size:.78rem;color:var(--txt2);max-width:80px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tb-logout{background:none;border:none;color:var(--txt3);font-size:.8rem;padding:4px 8px;
+  border-radius:6px;transition:all .15s}
+.tb-logout:hover{background:var(--ink3);color:var(--txt)}
+.desk-nav{display:none}
+@media(min-width:700px){
+  .desk-nav{display:flex;gap:2px}
+  .mob-nav{display:none!important}
+  .page-wrap{padding-bottom:32px!important}
+}
+.dn-btn{padding:6px 12px;border-radius:8px;background:none;border:none;
+  color:var(--txt2);font-size:.78rem;font-weight:600;transition:all .15s}
+.dn-btn:hover{background:var(--ink3);color:var(--txt)}
+.dn-btn.active{background:var(--a);color:white}
+
+.pages{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch}
+.page{display:none;padding:20px 16px}
+.page.active{display:block}
+@media(min-width:700px){.page{max-width:800px;margin:0 auto;padding:28px 24px}}
+.page-wrap{padding-bottom:calc(80px + var(--sb))}
+
+.mob-nav{position:fixed;bottom:0;left:0;right:0;
+  background:rgba(18,18,26,.95);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);
+  border-top:1px solid var(--line);padding-bottom:var(--sb);z-index:100;
+  display:flex}
+.mn-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:10px 4px;background:none;border:none;color:var(--txt3);gap:3px;
+  font-family:inherit;font-size:.56rem;font-weight:600;letter-spacing:.03em;min-height:56px;
+  transition:color .15s}
+.mn-btn .mni{font-size:1.3rem;transition:transform .15s}
+.mn-btn.active{color:var(--a)}
+.mn-btn.active .mni{transform:translateY(-1px)}
+
+.ph{margin-bottom:20px}
+.ph-title{font-size:1.5rem;font-weight:900;letter-spacing:-.03em}
+.ph-sub{font-size:.82rem;color:var(--txt3);margin-top:3px}
+
+.card{background:var(--ink3);border:1px solid var(--line);border-radius:var(--radius);
+  overflow:hidden;margin-bottom:12px}
+.card-head{padding:14px 16px;border-bottom:1px solid var(--line);
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  background:linear-gradient(135deg,var(--ink4),var(--ink3))}
+.card-body{padding:16px}
+.sess-badge{background:linear-gradient(135deg,var(--a),var(--b));color:white;
+  font-size:.72rem;font-weight:800;padding:4px 12px;border-radius:20px;letter-spacing:.05em;
+  flex-shrink:0}
+.card-fields{display:flex;gap:8px;flex:1;flex-wrap:wrap}
+.cf{display:flex;flex-direction:column;gap:4px;flex:1;min-width:100px}
+.cf-label{font-size:.62rem;text-transform:uppercase;letter-spacing:.08em;color:var(--txt3);font-weight:600}
+.cf input,.cf select{background:var(--ink);border:1.5px solid var(--line);
+  border-radius:var(--radius-sm);padding:10px 12px;color:var(--txt);font-size:.85rem;width:100%}
+.cf input:focus,.cf select:focus{outline:none;border-color:var(--a)}
+.cf select option{background:var(--ink3)}
+@media(max-width:400px){.card-fields{flex-direction:column}.cf{max-width:none!important}}
+
+.blocs-wrap{margin-bottom:14px}
+.blocs-wrap label{display:block;font-size:.65rem;text-transform:uppercase;letter-spacing:.08em;
+  color:var(--a);font-weight:600;margin-bottom:6px}
+.blocs-wrap textarea{width:100%;background:var(--ink);border:1.5px solid var(--line);
+  border-radius:var(--radius-sm);padding:11px 13px;color:var(--txt);font-size:.87rem;
+  resize:vertical;min-height:68px;line-height:1.5}
+.blocs-wrap textarea:focus{outline:none;border-color:var(--a)}
+
+.seq-card{background:var(--ink4);border:1px solid var(--line);border-radius:var(--radius-sm);
+  margin-bottom:10px;overflow:hidden}
+.seq-head{display:flex;align-items:center;gap:8px;padding:10px 12px;
+  border-bottom:1px solid var(--line)}
+.seq-badge{font-size:.65rem;font-weight:800;color:var(--b);text-transform:uppercase;letter-spacing:.05em}
+.seq-input{flex:1;background:transparent;border:none;color:var(--txt);font-size:.87rem;
+  padding:0;min-width:0}
+.seq-input:focus{outline:none}
+.seq-input::placeholder{color:var(--txt3)}
+.seq-del-btn{background:none;border:none;color:var(--line2);font-size:1rem;padding:2px 6px;
+  transition:color .1s;flex-shrink:0}
+.seq-del-btn:hover{color:var(--r)}
+.seq-body{padding:12px}
+.res-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:12px}
+.res-col{display:flex;flex-direction:column;gap:4px}
+.res-lbl{font-size:.58rem;text-transform:uppercase;letter-spacing:.07em;color:var(--txt3);
+  font-weight:700;text-align:center;margin-bottom:2px}
+.res-btns{display:flex;flex-direction:column;gap:3px}
+.rb{width:100%;padding:5px 0;border-radius:6px;border:1.5px solid var(--line);
+  background:transparent;color:var(--txt3);font-size:.72rem;font-weight:700;
+  transition:all .1s;text-align:center}
+.rb:active{transform:scale(.9)}
+.rb.on1{background:rgba(0,184,148,.2);border-color:var(--g);color:var(--g)}
+.rb.on2{background:rgba(0,206,201,.2);border-color:var(--b);color:var(--b)}
+.rb.on3{background:rgba(253,203,110,.2);border-color:var(--d);color:var(--d)}
+.rb.on4{background:rgba(253,121,168,.18);border-color:var(--c);color:var(--c)}
+.rb.on5{background:rgba(214,48,49,.2);border-color:var(--r);color:var(--r)}
+.seq-fields-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+@media(max-width:380px){.seq-fields-row{grid-template-columns:1fr}}
+.sf{display:flex;flex-direction:column;gap:4px}
+.sf label{font-size:.62rem;text-transform:uppercase;letter-spacing:.07em;color:var(--txt3);font-weight:600}
+.sf input{background:var(--ink);border:1.5px solid var(--line);border-radius:var(--radius-sm);
+  padding:9px 10px;color:var(--txt);font-size:.85rem;width:100%}
+.sf input:focus{outline:none;border-color:var(--b)}
+
+.obj-wrap{margin-top:14px}
+.obj-wrap label{display:block;font-size:.65rem;text-transform:uppercase;letter-spacing:.08em;
+  color:var(--b);font-weight:600;margin-bottom:6px}
+.obj-wrap textarea{width:100%;background:var(--ink);border:1.5px solid var(--line);
+  border-radius:var(--radius-sm);padding:11px 13px;color:var(--txt);font-size:.87rem;
+  resize:vertical;min-height:56px;line-height:1.5}
+.obj-wrap textarea:focus{outline:none;border-color:var(--b)}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;
+  padding:13px 20px;border-radius:var(--radius-sm);border:none;
+  font-family:inherit;font-weight:700;font-size:.88rem;transition:all .13s;cursor:pointer}
+.btn:active{transform:scale(.95)}
+.btn-primary{background:linear-gradient(135deg,var(--a),#4a00e0);color:white;
+  box-shadow:0 4px 16px rgba(108,92,231,.35)}
+.btn-secondary{background:var(--ink3);color:var(--txt);border:1.5px solid var(--line2)}
+.btn-success{background:linear-gradient(135deg,var(--g),#00695c);color:white;
+  box-shadow:0 4px 16px rgba(0,184,148,.3)}
+.btn-danger{background:transparent;color:var(--r);border:1.5px solid rgba(214,48,49,.3)}
+.btn-teal{background:linear-gradient(135deg,var(--b),#0097a7);color:white}
+.btn-sm{padding:9px 14px;font-size:.78rem}
+.btn-full{width:100%}
+.btn:disabled{opacity:.45;cursor:not-allowed;transform:none!important}
+.action-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
+@media(max-width:480px){.action-row{flex-direction:column}.action-row .btn{width:100%;margin-left:0!important}}
+
+.sheet-bg{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:300;
+  display:none;align-items:flex-end;justify-content:center;
+  backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+.sheet-bg.open{display:flex}
+.sheet{background:var(--ink2);border-radius:var(--radius-lg) var(--radius-lg) 0 0;
+  padding:16px 20px calc(24px + var(--sb));width:100%;max-height:90vh;overflow-y:auto;
+  animation:slideUp .25s cubic-bezier(.25,.46,.45,.94)}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+@keyframes fadeScale{from{transform:scale(.96);opacity:0}to{transform:scale(1);opacity:1}}
+.sheet-handle{width:36px;height:4px;background:var(--line2);border-radius:2px;
+  margin:0 auto 16px}
+.sheet h3{font-size:1.1rem;font-weight:800;letter-spacing:-.02em;margin-bottom:14px}
+@media(min-width:700px){
+  .sheet-bg{align-items:center}
+  .sheet{border-radius:var(--radius-lg);max-width:520px;padding:24px;animation:fadeScale .2s ease}
+}
+
+.drop-zone{border:2px dashed var(--line2);border-radius:var(--radius);padding:32px 20px;
+  text-align:center;cursor:pointer;position:relative;transition:all .2s;
+  background:rgba(108,92,231,.03)}
+.drop-zone.over{border-color:var(--b);background:rgba(0,206,201,.06)}
+.drop-zone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.dz-icon{font-size:2.2rem;margin-bottom:8px}
+.dz-title{font-weight:700;margin-bottom:4px}
+.dz-sub{font-size:.78rem;color:var(--txt3)}
+.preview-img{width:100%;max-height:200px;object-fit:contain;border-radius:10px;
+  border:1px solid var(--line);background:var(--ink);margin-bottom:10px}
+.ai-prog-bar{height:3px;background:var(--line);border-radius:2px;overflow:hidden;margin:8px 0}
+.ai-prog-fill{height:100%;background:linear-gradient(90deg,var(--a),var(--b));
+  border-radius:2px;transition:width .5s ease;width:0}
+.spin{display:inline-block;width:13px;height:13px;border:2px solid var(--line2);
+  border-top-color:var(--a);border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:5px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.ext-card{background:var(--ink3);border:1px solid rgba(0,206,201,.3);border-radius:var(--radius-sm);padding:12px;margin-top:10px}
+.ext-row{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--line);font-size:.8rem;gap:8px}
+.ext-row:last-child{border:none}
+.ext-row span:first-child{color:var(--txt3)}
+.ext-row span:last-child{font-weight:700;text-align:right;max-width:60%;word-break:break-word;white-space:pre-wrap}
+.scan-err{background:rgba(214,48,49,.1);border:1px solid rgba(214,48,49,.3);border-radius:var(--radius-sm);
+  padding:10px 12px;font-size:.8rem;color:#ff7675;line-height:1.5;margin-top:10px}
+
+.histo-item{background:var(--ink3);border:1px solid var(--line);border-radius:var(--radius);
+  padding:14px 16px;margin-bottom:8px;display:flex;align-items:center;gap:12px;cursor:pointer;
+  transition:all .15s}
+.histo-item:active{transform:scale(.98);background:var(--ink4)}
+.histo-icon{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;
+  justify-content:center;font-size:1.2rem;flex-shrink:0;
+  background:linear-gradient(135deg,rgba(108,92,231,.2),rgba(0,206,201,.2))}
+.histo-info{flex:1;min-width:0}
+.histo-num{font-weight:800;font-size:.9rem}
+.histo-meta{font-size:.75rem;color:var(--txt3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+.histo-arr{color:var(--txt3);font-size:1.1rem}
+
+.te-block{background:var(--ink3);border:1px solid var(--line);border-radius:var(--radius);margin-bottom:10px;overflow:hidden}
+.te-hdr{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;cursor:pointer;gap:10px}
+.te-hdr:active{background:var(--ink4)}
+.te-name{font-weight:800;font-size:.9rem}
+.te-meta{font-size:.73rem;color:var(--txt3);margin-top:2px}
+.te-sessions{padding:0 14px 12px;display:none}
+.te-sessions.open{display:block}
+.te-sess-row{display:flex;align-items:center;justify-content:space-between;
+  padding:8px 10px;border-radius:8px;background:var(--ink4);margin-bottom:5px;cursor:pointer;gap:8px}
+.te-sess-row:active{opacity:.8}
+.te-code{font-family:monospace;color:var(--b);font-size:.75rem;font-weight:700}
+
+.theme-tabs{display:flex;gap:6px;margin-bottom:16px;overflow-x:auto;padding-bottom:2px}
+.theme-tabs::-webkit-scrollbar{display:none}
+.ttab{padding:8px 16px;border-radius:20px;border:1.5px solid var(--line);
+  background:transparent;color:var(--txt2);font-size:.8rem;font-weight:700;
+  white-space:nowrap;transition:all .15s}
+.ttab.active{background:rgba(160,158,192,.12);border-color:var(--txt2);color:var(--txt)}
+.ttab.t1.active{background:rgba(108,92,231,.2);border-color:var(--a);color:var(--a)}
+.ttab.t2.active{background:rgba(253,203,110,.15);border-color:var(--d);color:var(--d)}
+.ttab.t3.active{background:rgba(0,206,201,.15);border-color:var(--b);color:var(--b)}
+.theme-panel{display:none}.theme-panel.active{display:block}
+.tp-card{background:var(--ink3);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;margin-bottom:12px}
+.tp-head{padding:14px 16px;border-bottom:1px solid var(--line)}
+.tp-badge{display:inline-block;font-size:.65rem;font-weight:800;padding:3px 10px;border-radius:12px;letter-spacing:.06em;margin-bottom:6px}
+.tp-badge.t1{background:rgba(108,92,231,.2);color:var(--a)}
+.tp-badge.t2{background:rgba(253,203,110,.2);color:var(--d)}
+.tp-badge.t3{background:rgba(0,206,201,.2);color:var(--b)}
+.tp-title{font-size:1.15rem;font-weight:900;letter-spacing:-.02em}
+.tp-sub{font-size:.78rem;color:var(--txt3);margin-top:2px}
+.tp-rows{padding:0 16px}
+.tp-row{display:flex;justify-content:space-between;align-items:flex-start;
+  padding:9px 0;border-bottom:1px solid var(--line);gap:10px;font-size:.83rem}
+.tp-row:last-child{border:none}
+.tp-row span:first-child{color:var(--txt3);flex-shrink:0;max-width:42%}
+.tp-row span:last-child{font-weight:700;text-align:right;line-height:1.3}
+.tp-ex{margin:0 16px 16px;background:var(--ink4);border-radius:var(--radius-sm);
+  padding:10px 14px;display:flex;justify-content:space-between;align-items:center;border:1px solid var(--line)}
+.tp-ex-lbl{font-size:.7rem;color:var(--txt3)}
+.tp-ex-val{font-size:1rem;font-weight:900;background:linear-gradient(90deg,var(--a),var(--b));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.tp-ex-val.t2{background:linear-gradient(90deg,var(--d),var(--c));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.tp-ex-val.t3{background:linear-gradient(90deg,var(--b),var(--g));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+
+.rt-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.rt-table{width:100%;border-collapse:collapse;min-width:420px}
+.rt-table th{background:var(--ink4);color:var(--txt3);font-size:.65rem;text-transform:uppercase;
+  letter-spacing:.07em;padding:8px 10px;text-align:center;border-bottom:1px solid var(--line)}
+.rt-table td{padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:middle;text-align:center;font-size:.78rem}
+.rt-table tr:last-child td{border:none}
+.rt-table td:first-child{font-size:1.2rem;width:44px}
+.rlbl{font-weight:700;font-size:.73rem;display:block;margin-bottom:1px}
+.rdesc{font-size:.67rem;color:var(--txt3);line-height:1.3}
+.r1 .rlbl{color:var(--g)}.r2 .rlbl{color:var(--b)}.r3 .rlbl{color:var(--d)}
+.r4 .rlbl{color:var(--c)}.r5 .rlbl{color:var(--r)}
+
+.sync-bar{display:flex;align-items:center;gap:8px;padding:8px 12px;
+  background:rgba(0,206,201,.07);border:1px solid rgba(0,206,201,.18);
+  border-radius:var(--radius-sm);margin-bottom:12px;font-size:.75rem;color:var(--txt3)}
+.sync-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;transition:background .3s}
+.sync-dot.ok{background:var(--g)}.sync-dot.loading{background:var(--d);animation:pulse2 1s infinite}
+.sync-dot.err{background:var(--r)}.sync-dot.off{background:var(--line2)}
+@keyframes pulse2{0%,100%{opacity:1}50%{opacity:.4}}
+.sync-btn{margin-left:auto;background:none;border:1px solid var(--line2);border-radius:6px;
+  padding:3px 8px;font-size:.7rem;color:var(--txt3);cursor:pointer;transition:all .15s}
+.sync-btn:hover{border-color:var(--b);color:var(--b)}
+
+.jb-setup{background:var(--ink4);border:1px solid var(--line);border-radius:var(--radius-sm);padding:12px;margin-top:10px}
+.jb-step{font-size:.75rem;color:var(--txt3);margin-bottom:8px;line-height:1.5}
+.jb-step a{color:var(--b);text-decoration:underline}
+.jb-status{font-size:.72rem;margin-top:6px;padding:6px 10px;border-radius:6px;line-height:1.4}
+.jb-status.ok{background:rgba(0,184,148,.1);color:var(--g);border:1px solid rgba(0,184,148,.2)}
+.jb-status.err{background:rgba(214,48,49,.1);color:var(--r);border:1px solid rgba(214,48,49,.2)}
+.jb-status.info{background:rgba(0,206,201,.08);color:var(--b);border:1px solid rgba(0,206,201,.15)}
+
+.sec-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+@media(max-width:420px){.sec-grid{grid-template-columns:1fr}}
+.sec-card{background:var(--ink3);border:1px solid var(--line);border-radius:var(--radius);padding:14px}
+.sec-title{font-size:.65rem;text-transform:uppercase;letter-spacing:.1em;font-weight:800;margin-bottom:10px}
+.sec-list{list-style:none;display:flex;flex-direction:column;gap:7px;font-size:.78rem;color:var(--txt3)}
+.lex-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:.78rem}
+@media(max-width:420px){.lex-grid{grid-template-columns:1fr}}
+.lex-item strong{color:var(--txt);display:block;margin-bottom:2px;font-size:.8rem}
+
+.send-card{background:var(--ink3);border:1px solid var(--line);border-radius:var(--radius);padding:16px;margin-bottom:12px}
+.recip-tag{display:inline-flex;align-items:center;gap:5px;background:rgba(108,92,231,.15);
+  border:1px solid rgba(108,92,231,.3);border-radius:14px;padding:3px 10px;
+  font-size:.75rem;color:var(--a);margin:2px}
+.preview-box{background:var(--ink);border:1px solid var(--line);border-radius:var(--radius-sm);
+  padding:12px;font-size:.74rem;color:var(--txt3);line-height:1.6;white-space:pre-wrap;
+  max-height:140px;overflow-y:auto;font-family:monospace}
+
+.mod-card{background:var(--ink3);border:1px solid var(--line);border-radius:var(--radius);
+  padding:16px;margin-bottom:12px}
+.mod-card h3{font-size:.88rem;font-weight:800;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.email-tag{display:inline-flex;align-items:center;gap:5px;background:rgba(108,92,231,.12);
+  border:1px solid rgba(108,92,231,.25);border-radius:14px;padding:3px 10px;
+  font-size:.75rem;color:var(--a);margin:2px}
+.email-tag button{background:none;border:none;color:var(--txt3);font-size:.85rem;padding:0;cursor:pointer;line-height:1}
+.email-tag button:hover{color:var(--r)}
+.email-row{display:flex;gap:8px;margin-top:10px}
+.email-row input{flex:1;min-width:0;background:var(--ink);border:1.5px solid var(--line);
+  border-radius:var(--radius-sm);padding:11px 12px;color:var(--txt);font-size:.85rem}
+.email-row input:focus{outline:none;border-color:var(--a)}
+.code-chip{font-family:monospace;background:rgba(0,206,201,.1);color:var(--b);
+  border:1px solid rgba(0,206,201,.25);border-radius:6px;padding:2px 8px;font-size:.8rem}
+.stu-item{background:var(--ink4);border:1px solid var(--line);border-radius:var(--radius-sm);
+  padding:11px 14px;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.stu-name{font-weight:700;font-size:.87rem}
+.stu-meta{font-size:.72rem;color:var(--txt3);margin-top:2px}
+.mono-box{width:100%;background:var(--ink);border:1.5px solid var(--line);border-radius:var(--radius-sm);
+  padding:10px;color:var(--txt2);font-family:monospace;font-size:.7rem;min-height:70px;resize:vertical;word-break:break-all}
+
+#confirm-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:600;
+  display:none;align-items:center;justify-content:center;padding:20px;
+  backdrop-filter:blur(6px)}
+#confirm-overlay.open{display:flex}
+.confirm-card{background:var(--ink2);border:1px solid rgba(214,48,49,.35);
+  border-radius:var(--radius-lg);padding:28px 24px;max-width:340px;width:100%;text-align:center}
+.confirm-icon{font-size:2.4rem;margin-bottom:12px}
+.confirm-title{font-size:1.15rem;font-weight:800;color:var(--r);margin-bottom:6px}
+.confirm-sub{font-size:.82rem;color:var(--txt3);line-height:1.5;margin-bottom:20px}
+.confirm-btns{display:flex;gap:8px;justify-content:center}
+
+#toast{position:fixed;left:50%;transform:translateX(-50%) translateY(140px);
+  bottom:calc(72px + var(--sb));background:var(--ink2);border:1px solid var(--line2);
+  color:var(--txt);padding:12px 20px;border-radius:12px;font-size:.83rem;font-weight:600;
+  z-index:700;transition:all .3s cubic-bezier(.34,1.56,.64,1);
+  box-shadow:0 8px 24px rgba(0,0,0,.5);max-width:90vw;text-align:center}
+#toast.show{transform:translateX(-50%) translateY(0)}
+#toast.ok{border-color:rgba(0,184,148,.4);color:var(--g)}
+#toast.err{border-color:rgba(214,48,49,.4);color:var(--r)}
+@media(min-width:700px){#toast{bottom:24px}}
+
+.empty{text-align:center;padding:40px 20px;color:var(--txt3)}
+.empty-icon{font-size:2.8rem;margin-bottom:12px}
+.empty h3{font-size:1rem;font-weight:700;color:var(--txt);margin-bottom:4px}
+</style>
+</head>
+<body>
+
+<div id="splash">
+  <div class="splash-logo">🏃</div>
+  <div class="splash-title">StepCarnet</div>
+  <div class="splash-bar"><div class="splash-bar-fill"></div></div>
+</div>
+
+<!-- ═══ WELCOME ═══ -->
+<div class="screen" id="sc-welcome">
+  <div class="auth-wrap" style="display:flex;flex-direction:column">
+    <div class="welcome-hero">
+      <div class="welcome-icon">🏃</div>
+      <div class="welcome-title">StepCarnet</div>
+      <div class="welcome-sub">Baccalauréat Professionnel EPS — Step</div>
+    </div>
+    <div class="choice-stack">
+      <button class="choice-btn primary" onclick="goScreen('sc-login')">
+        <div class="cb-icon">🎒</div>
+        <div class="choice-btn-text">
+          <div class="choice-btn-label">Connexion élève</div>
+          <div class="choice-btn-sub">Accès avec ton code à 4 chiffres</div>
+        </div>
+        <span style="color:rgba(255,255,255,.6)">›</span>
+      </button>
+      <button class="choice-btn" onclick="goScreen('sc-register')">
+        <div class="cb-icon" style="background:rgba(0,206,201,.15)">✨</div>
+        <div class="choice-btn-text">
+          <div class="choice-btn-label">Créer mon profil</div>
+          <div class="choice-btn-sub">Première fois ici ?</div>
+        </div>
+        <span style="color:var(--txt3)">›</span>
+      </button>
+      <div class="divider">ou</div>
+      <button class="choice-btn" onclick="goScreen('sc-teacher')" style="border-color:rgba(108,92,231,.3)">
+        <div class="cb-icon" style="background:rgba(108,92,231,.15)">🔐</div>
+        <div class="choice-btn-text">
+          <div class="choice-btn-label" style="color:var(--a)">Espace professeur</div>
+          <div class="choice-btn-sub">Accès modérateur sécurisé</div>
+        </div>
+        <span style="color:var(--txt3)">›</span>
+      </button>
+    </div>
+    <div id="cfg-state" style="text-align:center;font-size:.72rem;color:var(--txt3);margin-top:18px"></div>
+    <button class="link-btn" onclick="goScreen('sc-config')">⚙️ Configurer cet appareil (code classe)</button>
+  </div>
+</div>
+
+<!-- ═══ CONFIG IMPORT ═══ -->
+<div class="screen" id="sc-config">
+  <div class="auth-wrap">
+    <button class="back-btn" onclick="goScreen('sc-welcome')">← Retour</button>
+    <div class="auth-title">Code classe</div>
+    <div class="auth-sub">Colle ici le code de configuration donné par ton professeur. Il active la synchronisation cloud, le scan et l'envoi sur cet appareil.</div>
+    <div class="field"><label>Code de configuration</label><textarea id="cfg-inp" class="mono-box" placeholder="SC1…"></textarea></div>
+    <button class="btn btn-primary btn-full" onclick="importConfigFromInput()">Appliquer →</button>
+  </div>
+</div>
+
+<!-- ═══ STUDENT LOGIN ═══ -->
+<div class="screen" id="sc-login">
+  <div class="auth-wrap">
+    <button class="back-btn" onclick="goScreen('sc-welcome')">← Retour</button>
+    <div class="auth-title">Mon code</div>
+    <div class="auth-sub">Saisis ton code à 4 chiffres pour accéder à ton carnet</div>
+    <div class="pin-display" id="pin-dots">
+      <div class="pin-dot" id="pd0"></div><div class="pin-dot" id="pd1"></div>
+      <div class="pin-dot" id="pd2"></div><div class="pin-dot" id="pd3"></div>
+    </div>
+    <div class="pin-err" id="pin-err"></div>
+    <div class="numpad">
+      <button class="nk" onclick="np(1)">1</button><button class="nk" onclick="np(2)">2</button><button class="nk" onclick="np(3)">3</button>
+      <button class="nk" onclick="np(4)">4</button><button class="nk" onclick="np(5)">5</button><button class="nk" onclick="np(6)">6</button>
+      <button class="nk" onclick="np(7)">7</button><button class="nk" onclick="np(8)">8</button><button class="nk" onclick="np(9)">9</button>
+      <button class="nk nk-zero" onclick="np(0)">0</button><button class="nk nk-del" onclick="npDel()">⌫</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ REGISTER ═══ -->
+<div class="screen" id="sc-register">
+  <div class="auth-wrap">
+    <button class="back-btn" onclick="goScreen('sc-welcome')">← Retour</button>
+    <div class="auth-title">Créer mon profil</div>
+    <div class="auth-sub">Remplis les informations ci-dessous. Un code personnel à 4 chiffres te sera attribué.</div>
+    <div class="field"><label>Nom</label><input id="rg-nom" type="text" placeholder="Dupont" autocomplete="off"></div>
+    <div class="field"><label>Prénom</label><input id="rg-prenom" type="text" placeholder="Marie" autocomplete="off"></div>
+    <div class="field"><label>Classe</label><input id="rg-classe" type="text" placeholder="Term. Pro 1" autocomplete="off"></div>
+    <div class="field"><label>Année scolaire</label><input id="rg-annee" type="text" autocomplete="off"></div>
+    <div class="pin-err" id="rg-err" style="text-align:left;line-height:1.4"></div>
+    <button class="btn btn-primary btn-full" id="rg-btn" onclick="doRegister()">Créer mon profil →</button>
+  </div>
+</div>
+
+<!-- ═══ CODE SHOWN ═══ -->
+<div class="screen" id="sc-code">
+  <div class="auth-wrap" style="text-align:center">
+    <div style="font-size:3rem;margin-bottom:12px">🎉</div>
+    <div class="auth-title" style="color:var(--g)">Profil créé !</div>
+    <div class="auth-sub">Note absolument ce code — tu en auras besoin à chaque connexion !</div>
+    <div class="code-reveal">
+      <div class="code-label">Ton code personnel</div>
+      <div class="code-digits" id="shown-code">----</div>
+      <div class="code-warn">⚠️ Note ce code maintenant, il ne sera plus affiché</div>
+    </div>
+    <button class="btn btn-success btn-full" onclick="afterRegister()">J'ai noté mon code — Continuer →</button>
+  </div>
+</div>
+
+<!-- ═══ TEACHER ═══ -->
+<div class="screen" id="sc-teacher">
+  <div class="auth-wrap">
+    <button class="back-btn" onclick="goScreen('sc-welcome')">← Retour</button>
+    <div class="auth-title">Espace Professeur</div>
+    <div class="auth-sub">Mot de passe requis pour accéder à l'espace modérateur<br>
+      <span id="tpwd-hint"><span style="color:var(--txt3)">Défaut : </span><code style="color:var(--b)">step2024</code>
+      <span style="color:var(--txt3)"> (à modifier dans les réglages)</span></span></div>
+    <div class="pwd-row">
+      <input id="tpwd" type="password" placeholder="Mot de passe" onkeydown="if(event.key==='Enter')doTeacherLogin()">
+      <button class="pwd-eye" onclick="togglePwd('tpwd')">👁</button>
+    </div>
+    <div class="pin-err" id="tpwd-err"></div>
+    <button class="btn btn-primary btn-full" onclick="doTeacherLogin()">Connexion →</button>
+  </div>
+</div>
+
+<!-- ═══ SCAN SHEET ═══ -->
+<div class="sheet-bg" id="scan-sheet">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <h3>📸 Scanner un carnet manuscrit</h3>
+    <p style="font-size:.8rem;color:var(--txt3);margin-bottom:14px;line-height:1.5">
+      Prends une photo de ton carnet papier. L'IA lit l'écriture et remplit ta séance automatiquement.
+      <strong style="color:var(--txt)">Aucune clé API à saisir</strong> — configurée par le professeur.
+    </p>
+    <div class="field" style="margin-bottom:12px">
+      <label>Importer dans quelle séance ?</label>
+      <select id="scan-target"></select>
+    </div>
+    <div class="drop-zone" id="dz" ondragover="dzOver(event)" ondragleave="dzLeave()" ondrop="dzDrop(event)">
+      <input type="file" accept="image/*" capture="environment" id="scan-file" onchange="dzFile(event)">
+      <div class="dz-icon">📷</div>
+      <div class="dz-title">Glisse une image ou appuie ici</div>
+      <div class="dz-sub">Sur mobile : l'appareil photo s'ouvre directement</div>
+    </div>
+    <div id="scan-preview" style="display:none;margin-top:10px">
+      <img class="preview-img" id="scan-img" alt="">
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-primary btn-sm" id="scan-analyze-btn" onclick="doScan()">🤖 Analyser avec l'IA</button>
+        <button class="btn btn-secondary btn-sm" onclick="resetScan()">🔄 Changer</button>
+      </div>
+    </div>
+    <div id="scan-prog" style="display:none;margin-top:10px;padding:12px;background:var(--ink4);border-radius:var(--radius-sm)">
+      <div style="font-size:.8rem;font-weight:700;color:var(--a)"><span class="spin"></span><span id="scan-lbl">Analyse…</span></div>
+      <div class="ai-prog-bar"><div class="ai-prog-fill" id="scan-bar"></div></div>
+      <div id="scan-log" style="font-size:.72rem;color:var(--txt3);font-style:italic">Envoi en cours…</div>
+    </div>
+    <div id="scan-extracted" style="display:none" class="ext-card">
+      <div style="font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--b);margin-bottom:8px;font-weight:700">✨ Données extraites — vérifie avant d'importer</div>
+      <div id="scan-fields"></div>
+      <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+        <button class="btn btn-success btn-sm" onclick="importScan()">✅ Importer</button>
+        <button class="btn btn-secondary btn-sm" onclick="resetScan()">🔄 Recommencer</button>
+      </div>
+    </div>
+    <div id="scan-err" class="scan-err" style="display:none"></div>
+    <button class="btn btn-secondary btn-full" style="margin-top:14px" onclick="closeSheet('scan-sheet')">Fermer</button>
+  </div>
+</div>
+
+<!-- ═══ DETAIL SHEET ═══ -->
+<div class="sheet-bg" id="detail-sheet">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <h3 id="detail-title">Séance</h3>
+    <div id="detail-body"></div>
+    <button class="btn btn-secondary btn-full" style="margin-top:14px" onclick="closeSheet('detail-sheet')">Fermer</button>
+  </div>
+</div>
+
+<!-- ═══ CONFIRM ═══ -->
+<div id="confirm-overlay">
+  <div class="confirm-card">
+    <div class="confirm-icon">⚠️</div>
+    <div class="confirm-title">Réinitialiser ?</div>
+    <div class="confirm-sub">Toutes tes séances seront <strong style="color:var(--txt)">définitivement effacées</strong>. Cette action est irréversible.</div>
+    <div class="confirm-btns">
+      <button class="btn btn-secondary btn-sm" onclick="document.getElementById('confirm-overlay').classList.remove('open')">Annuler</button>
+      <button class="btn btn-sm" style="background:var(--r);color:white" onclick="doReset()">🗑️ Effacer</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<!-- ═══ APP ═══ -->
+<div id="app">
+  <div class="topbar">
+    <div class="topbar-inner">
+      <div class="tb-logo">
+        <div class="tb-icon">🏃</div>
+        <span class="tb-name">StepCarnet</span>
+      </div>
+      <nav class="desk-nav" id="desk-nav">
+        <button class="dn-btn active" id="dn-carnet" onclick="showPage('carnet')">📋 Carnet</button>
+        <button class="dn-btn" id="dn-historique" onclick="showPage('historique')">📅 Historique</button>
+        <button class="dn-btn" id="dn-referentiel" onclick="showPage('referentiel')">📚 Référentiel</button>
+        <button class="dn-btn" id="dn-envoyer" onclick="showPage('envoyer')">📤 Envoyer</button>
+        <button class="dn-btn" id="dn-moderateur" style="display:none" onclick="showPage('moderateur')">⚙️ Modér.</button>
+      </nav>
+      <div class="tb-user">
+        <div class="tb-avatar" id="tb-av">?</div>
+        <span class="tb-uname" id="tb-uname"></span>
+        <button class="tb-logout" onclick="doLogout()" title="Déconnexion">✕</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="pages">
+    <!-- CARNET -->
+    <div class="page active page-wrap" id="page-carnet">
+      <div class="ph"><div class="ph-title">Mon Carnet</div><div class="ph-sub" id="carnet-sub">Remplis ta fiche après chaque séance</div></div>
+      <div class="sync-bar" id="sync-bar">
+        <span class="sync-dot off" id="sync-dot"></span>
+        <span id="sync-msg">Synchronisation cloud non configurée</span>
+        <button class="sync-btn" onclick="manualSync()" id="sync-btn" style="display:none">↻ Sync</button>
+      </div>
+      <div id="sessions-list"></div>
+      <div class="action-row">
+        <button class="btn btn-primary" onclick="saveCarnet()">💾 Sauvegarder</button>
+        <button class="btn btn-secondary" onclick="addSession()">＋ Séance</button>
+        <button class="btn btn-teal btn-sm" onclick="openScanSheet()">📸 Scanner</button>
+        <button class="btn btn-danger btn-sm" onclick="document.getElementById('confirm-overlay').classList.add('open')" style="margin-left:auto">🗑️</button>
+      </div>
+    </div>
+
+    <!-- HISTORIQUE -->
+    <div class="page page-wrap" id="page-historique">
+      <div class="ph"><div class="ph-title">Historique</div><div class="ph-sub" id="histo-sub">Tes séances enregistrées</div></div>
+      <div id="histo-list"></div>
+    </div>
+
+    <!-- REFERENTIEL -->
+    <div class="page page-wrap" id="page-referentiel">
+      <div class="ph"><div class="ph-title">Référentiel</div><div class="ph-sub">Thèmes, ressentis & sécurité</div></div>
+      <div style="background:rgba(108,92,231,.08);border:1px solid rgba(108,92,231,.2);border-radius:var(--radius);padding:12px 14px;margin-bottom:16px;font-size:.78rem;color:var(--txt3);line-height:1.6">
+        <strong style="color:var(--a)">📐 FCE (Karvonen) :</strong>
+        <span style="color:var(--txt);font-weight:700"> FCE = FC repos + (FCR × % intensité)</span>
+        &nbsp;|&nbsp; FCR = FC max − FC repos &nbsp;|&nbsp; FC max : <strong>220−âge</strong> ♂ / <strong>226−âge</strong> ♀
+      </div>
+      <div class="theme-tabs">
+        <button class="ttab t1 active" onclick="showTheme(0,this)">Thème 1</button>
+        <button class="ttab t2" onclick="showTheme(1,this)">Thème 2</button>
+        <button class="ttab t3" onclick="showTheme(2,this)">Thème 3</button>
+        <button class="ttab" onclick="showTheme(3,this)">Ressentis</button>
+        <button class="ttab" onclick="showTheme(4,this)">Sécurité</button>
+      </div>
+
+      <div class="theme-panel active" id="tp-0">
+        <div class="tp-card">
+          <div class="tp-head"><span class="tp-badge t1">Thème 1</span><div class="tp-title">Puissance Aérobie</div><div class="tp-sub">Efforts brefs et intenses</div></div>
+          <div class="tp-rows">
+            <div class="tp-row"><span>FC</span><span>Proche FC max, motricité variée</span></div>
+            <div class="tp-row"><span>Respiration</span><span>Fortement marquée</span></div>
+            <div class="tp-row"><span>% FCR</span><span style="color:var(--a)">&gt; 85 %</span></div>
+            <div class="tp-row"><span>Temps total</span><span style="color:var(--a)">14 à 22 min</span></div>
+            <div class="tp-row"><span>Durée série</span><span>Max 4 min</span></div>
+            <div class="tp-row"><span>Récupération</span><span>Max 4 min</span></div>
+            <div class="tp-row"><span>BPM</span><span>150</span></div>
+            <div class="tp-row"><span>Paramètres</span><span style="font-size:.75rem">Énergétiques : impulsions, bras épaules, lests, hauteur</span></div>
+          </div>
+          <div class="tp-ex"><span class="tp-ex-lbl">💡 Exemple</span><span class="tp-ex-val">4 × 4 min + R' 2 min</span></div>
+        </div>
+      </div>
+
+      <div class="theme-panel" id="tp-1">
+        <div class="tp-card">
+          <div class="tp-head"><span class="tp-badge t2">Thème 2</span><div class="tp-title" style="color:var(--d)">Capacité Aérobie</div><div class="tp-sub">Efforts longs et soutenus</div></div>
+          <div class="tp-rows">
+            <div class="tp-row"><span>FC</span><span>Élevée, coordination présente</span></div>
+            <div class="tp-row"><span>Respiration</span><span>Accentuée et rythmée</span></div>
+            <div class="tp-row"><span>% FCR</span><span style="color:var(--d)">70 à 85 %</span></div>
+            <div class="tp-row"><span>Temps total</span><span style="color:var(--d)">20 à 26 min</span></div>
+            <div class="tp-row"><span>Séries</span><span>Minimum 3</span></div>
+            <div class="tp-row"><span>Récupération</span><span>Max 4 min</span></div>
+            <div class="tp-row"><span>BPM</span><span>140</span></div>
+            <div class="tp-row"><span>Paramètres</span><span style="font-size:.75rem">Énergétiques : impulsions, bras, lests, hauteur</span></div>
+          </div>
+          <div class="tp-ex"><span class="tp-ex-lbl">💡 Exemple</span><span class="tp-ex-val t2">3 × 8 min + R' 3 min</span></div>
+        </div>
+      </div>
+
+      <div class="theme-panel" id="tp-2">
+        <div class="tp-card">
+          <div class="tp-head"><span class="tp-badge t3">Thème 3</span><div class="tp-title" style="color:var(--b)">Endurance Fondamentale</div><div class="tp-sub">Efforts prolongés et modérés</div></div>
+          <div class="tp-rows">
+            <div class="tp-row"><span>FC</span><span>Modérée, motricité ambitieuse</span></div>
+            <div class="tp-row"><span>Respiration</span><span>Aisance respiratoire</span></div>
+            <div class="tp-row"><span>% FCR</span><span style="color:var(--b)">50 à 65 %</span></div>
+            <div class="tp-row"><span>Temps total</span><span style="color:var(--b)">25 à 30 min</span></div>
+            <div class="tp-row"><span>Séries</span><span>2, 3 ou 4</span></div>
+            <div class="tp-row"><span>Récupération</span><span>Max 4 min</span></div>
+            <div class="tp-row"><span>BPM</span><span>128</span></div>
+            <div class="tp-row"><span>Paramètres</span><span style="font-size:.75rem">Biomécaniques : orientation, dissociation, pas complexes</span></div>
+          </div>
+          <div class="tp-ex"><span class="tp-ex-lbl">💡 Exemple</span><span class="tp-ex-val t3">3 × 9 min + R' 4 min</span></div>
+        </div>
+      </div>
+
+      <div class="theme-panel" id="tp-3">
+        <div class="tp-card" style="padding:0">
+          <div class="rt-wrap">
+            <table class="rt-table">
+              <thead><tr><th>Niv.</th><th>Respiratoire</th><th>Musculaire</th><th>Psychologique</th><th>Chaleur</th></tr></thead>
+              <tbody>
+                <tr><td>😊<br><strong style="color:var(--g)">1</strong></td>
+                  <td class="r1"><span class="rlbl">À l'aise</span><span class="rdesc">Pas essoufflé, parle librement</span></td>
+                  <td class="r1"><span class="rlbl">Aucune douleur</span><span class="rdesc">Appuis solides</span></td>
+                  <td class="r1"><span class="rlbl">Facile</span><span class="rdesc">Très bien</span></td>
+                  <td class="r1"><span class="rlbl">Pas chaud</span><span class="rdesc">Ne transpire pas</span></td></tr>
+                <tr><td>🙂<br><strong style="color:var(--b)">2</strong></td>
+                  <td class="r2"><span class="rlbl">Un peu essoufflé</span><span class="rdesc">Cale la respiration, parle</span></td>
+                  <td class="r2"><span class="rlbl">Quelques tensions</span><span class="rdesc">Activité musculaire perçue</span></td>
+                  <td class="r2"><span class="rlbl">Confortable</span><span class="rdesc">Bien</span></td>
+                  <td class="r2"><span class="rlbl">Chaud, transpire peu</span><span class="rdesc">Commence à avoir chaud</span></td></tr>
+                <tr><td>😐<br><strong style="color:var(--d)">3</strong></td>
+                  <td class="r3"><span class="rlbl">Essoufflé(e)</span><span class="rdesc">Rythme rapide, parler difficile</span></td>
+                  <td class="r3"><span class="rlbl">Légère fatigue</span><span class="rdesc">Jambes lourdes en fin</span></td>
+                  <td class="r3"><span class="rlbl">Supportable</span><span class="rdesc">Souffre légèrement</span></td>
+                  <td class="r3"><span class="rlbl">Transpire</span><span class="rdesc">Chaud et transpire</span></td></tr>
+                <tr><td>😟<br><strong style="color:var(--c)">4</strong></td>
+                  <td class="r4"><span class="rlbl">Très essoufflé(e)</span><span class="rdesc">Ne peut plus parler</span></td>
+                  <td class="r4"><span class="rlbl">Muscles chauffent</span><span class="rdesc">Jambes très lourdes</span></td>
+                  <td class="r4"><span class="rlbl">Pénible</span><span class="rdesc">Souffre mais se dépasse</span></td>
+                  <td class="r4"><span class="rlbl">Transpire bcp</span><span class="rdesc">Très chaud</span></td></tr>
+                <tr><td>😵<br><strong style="color:var(--r)">5</strong></td>
+                  <td class="r5"><span class="rlbl">Difficile de souffler</span><span class="rdesc">Manque de souffle</span></td>
+                  <td class="r5"><span class="rlbl">Ça brûle</span><span class="rdesc">Tensions intenses</span></td>
+                  <td class="r5"><span class="rlbl">Très difficile</span><span class="rdesc">Envie d'arrêter</span></td>
+                  <td class="r5"><span class="rlbl">Transpire énormément</span><span class="rdesc">Écarlate</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="theme-panel" id="tp-4">
+        <div class="sec-grid">
+          <div class="sec-card" style="border-color:rgba(0,206,201,.2)">
+            <div class="sec-title" style="color:var(--b)">🔒 Sécurité passive</div>
+            <ul class="sec-list">
+              <li>📐 <strong style="color:var(--txt)">Espacement</strong> — Écart suffisant entre les steps dans l'espace</li>
+              <li>🔧 <strong style="color:var(--txt)">Adhérence</strong> — Poser le step directement sur le sol, sans tapis</li>
+            </ul>
+          </div>
+          <div class="sec-card" style="border-color:rgba(253,121,168,.2)">
+            <div class="sec-title" style="color:var(--c)">⚡ Sécurité active</div>
+            <ul class="sec-list">
+              <li>🦶 Pied entier à plat, sans bruit</li>
+              <li>🧍 Alignement pied → bassin → épaule</li>
+              <li>⬇️ Descente amortie, avant interdit</li>
+              <li>💪 Fessiers/abdos gainés, tête haute</li>
+            </ul>
+          </div>
+        </div>
+        <div class="sec-card" style="border-color:var(--line);margin-top:10px">
+          <div class="sec-title" style="color:var(--a)">📚 Lexique</div>
+          <div class="lex-grid">
+            <div class="lex-item"><strong>Bloc</strong> 4 × 8 temps = 32 temps</div>
+            <div class="lex-item"><strong>BPM</strong> Battements Par Minute (tempo)</div>
+            <div class="lex-item"><strong>ETM</strong> Exigences Techniques Minimales</div>
+            <div class="lex-item"><strong>FCR</strong> FC max − FC repos</div>
+            <div class="lex-item"><strong>Continuité</strong> Enchaînement sans rupture ni arrêt</div>
+            <div class="lex-item"><strong>Tonicité</strong> Fessiers/abdos gainés, tête haute</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ENVOYER -->
+    <div class="page page-wrap" id="page-envoyer">
+      <div class="ph"><div class="ph-title">Envoyer</div><div class="ph-sub">Transmets ton carnet à ton professeur</div></div>
+      <div style="background:rgba(253,203,110,.1);border:1.5px solid rgba(253,203,110,.35);border-radius:var(--radius);padding:12px 14px;margin-bottom:12px;font-size:.82rem;color:var(--txt);line-height:1.5">
+        <strong style="color:var(--d)">📌 À envoyer en une seule fois, à la fin du cycle</strong><br>
+        Attends d'avoir rempli <strong>toutes tes séances</strong> (y compris celles marquées absent) avant d'envoyer ton carnet. Il doit être complet — n'envoie pas une séance après l'autre.
+      </div>
+      <div class="send-card">
+        <div id="send-recipients" style="margin-bottom:12px"></div>
+        <div class="field"><label>Message (optionnel)</label><textarea id="send-msg" placeholder="Bonjour, voici mon carnet step…"></textarea></div>
+        <div class="field"><label>Aperçu du carnet</label><div class="preview-box" id="send-preview">Remplis d'abord ton carnet…</div></div>
+        <div class="action-row" style="margin-top:0">
+          <button class="btn btn-success" style="flex:1" onclick="doSend()">✉️ Envoyer par email</button>
+          <button class="btn btn-secondary" onclick="copyCarnet()">📋 Copier le texte</button>
+        </div>
+        <p style="font-size:.72rem;color:var(--txt3);margin-top:10px;line-height:1.5">Si ta messagerie ne s'ouvre pas ou que le texte est coupé, utilise « Copier le texte » puis colle-le dans un mail.</p>
+      </div>
+    </div>
+
+    <!-- MODÉRATEUR -->
+    <div class="page page-wrap" id="page-moderateur">
+      <div class="ph"><div class="ph-title">Modérateur</div><div class="ph-sub">Espace réservé au professeur</div></div>
+
+      <div class="mod-card">
+        <h3>👥 Élèves inscrits</h3>
+        <div id="mod-students"></div>
+        <button class="btn btn-teal btn-sm" id="cloud-pull-btn" style="margin-top:8px;display:none" onclick="pullAllFromCloud()">☁️ Récupérer les carnets depuis le cloud</button>
+        <div id="mod-lastsync" style="font-size:.7rem;color:var(--txt3);margin-top:6px"></div>
+      </div>
+
+      <div class="mod-card">
+        <h3>📧 Emails destinataires</h3>
+        <div id="email-tags"></div>
+        <div class="email-row">
+          <input type="email" id="new-email" placeholder="prof@lycee.fr" onkeydown="if(event.key==='Enter')addEmail()">
+          <button class="btn btn-primary btn-sm" onclick="addEmail()">Ajouter</button>
+        </div>
+      </div>
+
+      <div class="mod-card">
+        <h3>☁️ Synchronisation cloud (Google Sheet)</h3>
+        <p style="font-size:.78rem;color:var(--txt3);margin-bottom:10px;line-height:1.5">
+          Les carnets sont enregistrés dans un Google Sheet de ton compte : les élèves retrouvent leur carnet sur n'importe quel appareil et tu consultes tout dans le tableur.
+        </p>
+        <div class="jb-setup">
+          <div class="jb-step">
+            1. Crée un Google Sheet → <strong>Extensions → Apps Script</strong> → colle le script <code>stepcarnet-google-script.gs</code><br>
+            2. Change les deux mots de passe en haut du script, enregistre<br>
+            3. <strong>Déployer → Nouveau déploiement → Application Web</strong> (Exécuter en tant que : Moi · Accès : Tout le monde)<br>
+            4. Colle l'URL <code>…/exec</code> et les deux mots de passe ci-dessous
+          </div>
+          <div class="field" style="margin:0 0 8px"><label>URL de l'application Web</label>
+            <input id="gs-url-inp" type="url" placeholder="https://script.google.com/macros/s/…/exec"></div>
+          <div class="field" style="margin:0 0 8px"><label>Mot de passe classe (CLASS_TOKEN)</label>
+            <div class="pwd-row" style="margin:0"><input id="gs-token-inp" type="password"><button class="pwd-eye" onclick="togglePwd('gs-token-inp')">👁</button></div></div>
+          <div class="field" style="margin:0"><label>Mot de passe prof (ADMIN_TOKEN)</label>
+            <div class="pwd-row" style="margin:0"><input id="gs-admin-inp" type="password"><button class="pwd-eye" onclick="togglePwd('gs-admin-inp')">👁</button></div></div>
+          <button class="btn btn-teal btn-sm" style="margin-top:10px;width:100%" onclick="initCloud()">☁️ Tester et enregistrer</button>
+          <div id="jb-status" class="jb-status info" style="display:none"></div>
+        </div>
+        <button class="btn btn-secondary btn-sm" id="cloud-push-btn" style="margin-top:10px;display:none" onclick="pushLocalToCloud()">⬆️ Envoyer les élèves de cet appareil vers le Sheet</button>
+      </div>
+
+      <div class="mod-card">
+        <h3>🤖 Clé API (scan manuscrit)</h3>
+        <p style="font-size:.78rem;color:var(--txt3);margin-bottom:10px;line-height:1.5">Clé Anthropic utilisée pour lire les carnets photographiés.</p>
+        <div class="pwd-row">
+          <input id="api-key-inp" type="password" placeholder="sk-ant-api03-…">
+          <button class="pwd-eye" onclick="togglePwd('api-key-inp')">👁</button>
+        </div>
+        <div id="api-key-status" style="font-size:.72rem;color:var(--txt3);margin-top:4px"></div>
+        <div class="field" style="margin:10px 0 0"><label>Modèle</label>
+          <input id="api-model-inp" type="text" placeholder="claude-sonnet-5"></div>
+        <button class="btn btn-primary btn-sm" style="margin-top:10px" onclick="saveApiKey()">Enregistrer</button>
+      </div>
+
+      <div class="mod-card">
+        <h3>📲 Code classe (configurer les appareils élèves)</h3>
+        <p style="font-size:.78rem;color:var(--txt3);margin-bottom:10px;line-height:1.5">
+          Les réglages (cloud, clé API, emails) sont stockés <strong style="color:var(--txt)">sur chaque appareil</strong>. Pour que les téléphones des élèves en profitent, partage ce lien (ou ce code) : en l'ouvrant, l'appareil de l'élève est configuré automatiquement. Le mot de passe prof n'y figure pas.
+          <br><span style="color:var(--d)">⚠️ Il contient le mot de passe classe et la clé API : ne le partage qu'avec ta classe.</span>
+        </p>
+        <textarea id="cfg-out" class="mono-box" readonly placeholder="Clique sur Générer"></textarea>
+        <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+          <button class="btn btn-secondary btn-sm" onclick="genConfig()">Générer</button>
+          <button class="btn btn-primary btn-sm" onclick="copyText(document.getElementById('cfg-out').value,'Code copié ✓')">📋 Copier</button>
+        </div>
+      </div>
+
+      <div class="mod-card">
+        <h3>🔐 Mot de passe professeur</h3>
+        <div class="pwd-row">
+          <input id="new-pwd" type="password" placeholder="Nouveau mot de passe (min. 4 car.)">
+          <button class="pwd-eye" onclick="togglePwd('new-pwd')">👁</button>
+        </div>
+        <button class="btn btn-secondary btn-sm" style="margin-top:8px" onclick="changeTeacherPwd()">Modifier</button>
+      </div>
+    </div>
+  </div>
+
+  <nav class="mob-nav">
+    <button class="mn-btn active" id="mn-carnet" onclick="showPage('carnet')"><span class="mni">📋</span>Carnet</button>
+    <button class="mn-btn" id="mn-historique" onclick="showPage('historique')"><span class="mni">📅</span>Historique</button>
+    <button class="mn-btn" id="mn-referentiel" onclick="showPage('referentiel')"><span class="mni">📚</span>Réf.</button>
+    <button class="mn-btn" id="mn-envoyer" onclick="showPage('envoyer')"><span class="mni">📤</span>Envoyer</button>
+    <button class="mn-btn" id="mn-moderateur" style="display:none" onclick="showPage('moderateur')"><span class="mni">⚙️</span>Modér.</button>
+  </nav>
+</div>
+
+<script>
+// ────────────────────────────────────────────────────────
+// UTILS
+// ────────────────────────────────────────────────────────
+var DEFAULT_MODEL = 'claude-sonnet-5';
+function $(id){return document.getElementById(id)}
+function esc(v){
+  if(v===null||v===undefined) return '';
+  return String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+function clone(o){return JSON.parse(JSON.stringify(o))}
+function togglePwd(id){var i=$(id);i.type=i.type==='password'?'text':'password'}
+function schoolYear(){
+  var d=new Date(),y=d.getFullYear();
+  return d.getMonth()>=7 ? y+'-'+(y+1) : (y-1)+'-'+y;
+}
+function copyText(txt,okMsg){
+  if(!txt){showToast('Rien à copier','err');return}
+  var done=function(){showToast(okMsg||'Copié ✓')};
+  var fallback=function(){
+    var ta=document.createElement('textarea');
+    ta.value=txt;ta.style.position='fixed';ta.style.opacity='0';
+    document.body.appendChild(ta);ta.select();
+    try{document.execCommand('copy');done()}catch(e){showToast('Copie impossible','err')}
+    document.body.removeChild(ta);
+  };
+  if(navigator.clipboard&&window.isSecureContext){
+    navigator.clipboard.writeText(txt).then(done,fallback);
+  } else fallback();
+}
+
+// ────────────────────────────────────────────────────────
+// STORAGE (tolère un localStorage bloqué)
+// ────────────────────────────────────────────────────────
+var MEM = {};
+var LS_OK = (function(){try{localStorage.setItem('__t','1');localStorage.removeItem('__t');return true}catch(e){return false}})();
+var S = {
+  g: function(k){
+    try{ var raw = LS_OK ? localStorage.getItem(k) : MEM[k]; return raw==null?null:JSON.parse(raw); }
+    catch(e){ return null; }
+  },
+  s: function(k,v){
+    var raw = JSON.stringify(v);
+    if(LS_OK){ try{ localStorage.setItem(k,raw); return; }catch(e){ showToast('Stockage plein ou bloqué','err'); } }
+    MEM[k]=raw;
+  },
+  students: function(){return S.g('sc_students')||{}},
+  saveStudents: function(v){S.s('sc_students',v)},
+  emails: function(){return S.g('sc_emails')||[]},
+  saveEmails: function(v){S.s('sc_emails',v)},
+  teacherPwd: function(){return S.g('sc_tpwd')||'step2024'},
+  apiKey: function(){return S.g('sc_apikey')||''},
+  model: function(){return S.g('sc_model')||DEFAULT_MODEL},
+  gsUrl: function(){return S.g('sc_gsurl')||''},
+  gsToken: function(){return S.g('sc_gstoken')||''},
+  gsAdmin: function(){return S.g('sc_gsadmin')||''},
+  cloudReady: function(){return !!(S.gsUrl()&&S.gsToken())}
+};
+
+// ────────────────────────────────────────────────────────
+// STATE
+// ────────────────────────────────────────────────────────
+var STATE = {
+  student: null,
+  teacher: false,
+  sessions: [],
+  pin: '',
+  scanB64: null,
+  scanMime: 'image/jpeg',
+  scanData: null,
+  detailList: []
+};
+
+// ────────────────────────────────────────────────────────
+// INIT
+// ────────────────────────────────────────────────────────
+window.addEventListener('load', function(){
+  purgeInvalidStudents();
+  $('rg-annee').placeholder = schoolYear();
+  // Config via lien  …#cfg=SC1…
+  var m = location.hash.match(/cfg=([^&]+)/);
+  if(m){
+    if(applyConfig(decodeURIComponent(m[1]))) showToast('Appareil configuré ✓');
+    try{history.replaceState(null,'',location.pathname+location.search)}catch(e){}
+  }
+  if(!LS_OK) setTimeout(function(){showToast('⚠️ Stockage local bloqué : les données seront perdues à la fermeture','err')},1600);
+  setTimeout(function(){
+    $('splash').classList.add('hidden');
+    goScreen('sc-welcome');
+  }, 1400);
+});
+
+// ────────────────────────────────────────────────────────
+// CONFIG PARTAGÉE
+// ────────────────────────────────────────────────────────
+function b64e(str){return btoa(unescape(encodeURIComponent(str)))}
+function b64d(str){return decodeURIComponent(escape(atob(str)))}
+function genConfig(){
+  var cfg = {u:S.gsUrl(), t:S.gsToken(), a:S.apiKey(), md:S.model(), e:S.emails()};
+  var code = 'SC2' + b64e(JSON.stringify(cfg));
+  $('cfg-out').value = /^https?:$/.test(location.protocol) ? location.origin+location.pathname+'#cfg='+code : code;
+}
+function applyConfig(code){
+  try{
+    code = String(code||'').trim();
+    var m = code.match(/cfg=([^&\s]+)/); if(m) code = decodeURIComponent(m[1]);
+    if(code.indexOf('SC2')!==0) throw new Error();
+    var cfg = JSON.parse(b64d(code.slice(3)));
+    if(cfg.u) S.s('sc_gsurl',cfg.u);
+    if(cfg.t) S.s('sc_gstoken',cfg.t);
+    if(cfg.a) S.s('sc_apikey',cfg.a);
+    if(cfg.md) S.s('sc_model',cfg.md);
+    if(cfg.e && cfg.e.length) S.saveEmails(cfg.e);
+    return true;
+  }catch(e){ return false; }
+}
+function importConfigFromInput(){
+  if(applyConfig($('cfg-inp').value)){
+    $('cfg-inp').value='';
+    showToast('Appareil configuré ✓');
+    goScreen('sc-welcome');
+  } else showToast('Code invalide','err');
+}
+function renderCfgState(){
+  var el=$('cfg-state'); if(!el) return;
+  var parts=[];
+  parts.push(S.cloudReady()?'☁️ Cloud actif':'☁️ Cloud non configuré');
+  parts.push(S.apiKey()?'📸 Scan actif':'📸 Scan inactif');
+  el.textContent=parts.join(' · ');
+}
+
+// ────────────────────────────────────────────────────────
+// SCREENS / PAGES
+// ────────────────────────────────────────────────────────
+function goScreen(id){
+  document.querySelectorAll('.screen').forEach(function(s){s.classList.remove('active')});
+  $('app').classList.remove('active');
+  $(id).classList.add('active');
+  if(id==='sc-welcome') renderCfgState();
+  if(id==='sc-teacher') $('tpwd-hint').style.display = S.g('sc_tpwd') ? 'none' : '';
+}
+function setNavVisible(name, show){
+  ['dn-','mn-'].forEach(function(p){var el=$(p+name); if(el) el.style.display = show?'':'none';});
+}
+function showApp(){
+  document.querySelectorAll('.screen').forEach(function(s){s.classList.remove('active')});
+  $('app').classList.add('active');
+  setNavVisible('moderateur', STATE.teacher);
+  setNavVisible('carnet', !STATE.teacher);
+  setNavVisible('envoyer', !STATE.teacher);
+  if(STATE.student){
+    $('tb-av').textContent = (STATE.student.prenom[0]||'?').toUpperCase();
+    $('tb-uname').textContent = STATE.student.prenom + ' ' + STATE.student.nom;
+    $('carnet-sub').textContent = (STATE.student.classe||'') + (STATE.student.annee?' — '+STATE.student.annee:'');
+  } else {
+    $('tb-av').textContent = '🔐';
+    $('tb-uname').textContent = 'Professeur';
+  }
+  if(STATE.teacher){
+    showPage('moderateur');
+  } else {
+    showPage('carnet');
+    renderSessions();
+  }
+}
+function showPage(name){
+  document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active')});
+  document.querySelectorAll('.dn-btn,.mn-btn').forEach(function(b){b.classList.remove('active')});
+  $('page-'+name).classList.add('active');
+  ['dn-','mn-'].forEach(function(p){var b=$(p+name); if(b) b.classList.add('active');});
+  document.querySelector('.pages').scrollTop = 0;
+  if(name==='historique') renderHisto();
+  if(name==='envoyer') renderEnvoyer();
+  if(name==='moderateur') renderMod();
+}
+
+// ────────────────────────────────────────────────────────
+// PIN
+// ────────────────────────────────────────────────────────
+function np(n){
+  if(STATE.pin.length>=4) return;
+  STATE.pin += String(n);
+  refreshDots();
+  if(STATE.pin.length===4) setTimeout(checkPin, 120);
+}
+function npDel(){
+  STATE.pin = STATE.pin.slice(0,-1);
+  refreshDots();
+  $('pin-err').textContent='';
+}
+function refreshDots(){
+  for(var i=0;i<4;i++){
+    $('pd'+i).className = 'pin-dot'+(i<STATE.pin.length?' filled':'');
+  }
+}
+function pinFail(msg){
+  $('pin-err').textContent=msg||'Code incorrect, réessaie';
+  for(var i=0;i<4;i++) $('pd'+i).classList.add('error');
+  setTimeout(function(){STATE.pin='';refreshDots()},600);
+}
+function loginAs(stu, fresh){
+  STATE.student = stu;
+  STATE.teacher = false;
+  $('pin-err').textContent='';
+  STATE.pin=''; refreshDots();
+  loadStudentSessions(fresh);
+  showApp();
+}
+function checkPin(){
+  var pin = STATE.pin;
+  var students = S.students();
+  var foundKey = Object.keys(students).filter(function(k){return students[k].code===pin})[0];
+  if(foundKey){ loginAs(Object.assign({key:foundKey}, students[foundKey])); return; }
+  if(!S.cloudReady()){ pinFail(); return; }
+  $('pin-err').textContent='Recherche en ligne…';
+  API.call('login',{code:pin}).then(function(j){
+    var k = j.student.key;
+    var st2 = S.students();
+    st2[k] = Object.assign({}, st2[k]||{}, j.student, {sessions:(j.sessions||[]).map(normSess), savedAt:j.student.savedAt||null});
+    S.saveStudents(st2);
+    loginAs(Object.assign({key:k}, st2[k]), true);
+  }).catch(function(e){
+    console.warn(e);
+    pinFail(/introuvable/i.test(e.message) ? null : 'Connexion impossible : '+e.message);
+  });
+}
+
+// ────────────────────────────────────────────────────────
+// REGISTER
+// ────────────────────────────────────────────────────────
+async function doRegister(){
+  var btn=$('rg-btn'), err=$('rg-err');
+  if(btn.disabled) return;
+  err.textContent='';
+  var nom = $('rg-nom').value.trim();
+  var prenom = $('rg-prenom').value.trim();
+  var classe = $('rg-classe').value.trim();
+  var annee = $('rg-annee').value.trim() || schoolYear();
+  if(!nom||!prenom){ err.textContent='⚠️ Nom et prénom requis'; return; }
+  btn.disabled=true;
+  var label=btn.textContent;
+  btn.textContent='⏳ Création du profil…';
+  try{
+    var students = S.students();
+    var stu;
+    if(S.cloudReady()){
+      var j = await API.call('register',{nom:nom,prenom:prenom,classe:classe,annee:annee});
+      if(!j.student||!j.student.key||!j.student.code||!j.student.nom||!j.student.prenom) throw new Error('Réponse du serveur incomplète, réessaie');
+      stu = Object.assign({}, j.student, {sessions:[], savedAt:null});
+    } else {
+      var used={}; Object.keys(students).forEach(function(k){used[students[k].code]=1});
+      var code, tries=0;
+      do{ code=String(Math.floor(1000+Math.random()*9000)); tries++; } while(used[code] && tries<500);
+      var key=(nom+'_'+prenom+'_'+Date.now()).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9_]/g,'_');
+      stu = {key:key,nom:nom,prenom:prenom,classe:classe,annee:annee,code:code,sessions:[],savedAt:null};
+    }
+    students[stu.key] = stu;
+    S.saveStudents(students);
+    STATE.student = Object.assign({},stu);
+    $('shown-code').textContent = stu.code;
+    ['rg-nom','rg-prenom','rg-classe','rg-annee'].forEach(function(id){$(id).value=''});
+    goScreen('sc-code');
+  }catch(e){
+    console.warn(e);
+    err.textContent='❌ Inscription impossible : '+(e&&e.message||e);
+  }finally{
+    btn.disabled=false;
+    btn.textContent=label;
+  }
+}
+function afterRegister(){
+  STATE.teacher=false;
+  loadStudentSessions(true);
+  showApp();
+}
+
+// ────────────────────────────────────────────────────────
+// TEACHER LOGIN
+// ────────────────────────────────────────────────────────
+function doTeacherLogin(){
+  var pwd = $('tpwd').value;
+  if(pwd===S.teacherPwd()){
+    STATE.teacher=true; STATE.student=null; STATE.sessions=[];
+    $('tpwd-err').textContent='';
+    $('tpwd').value='';
+    showApp();
+  } else {
+    $('tpwd-err').textContent='Mot de passe incorrect';
+  }
+}
+function changeTeacherPwd(){
+  var v = $('new-pwd').value.trim();
+  if(v.length<4){showToast('Mot de passe trop court','err');return}
+  S.s('sc_tpwd',v);
+  $('new-pwd').value='';
+  showToast('Mot de passe modifié ✓');
+}
+function doLogout(){
+  STATE.student=null; STATE.teacher=false; STATE.sessions=[]; STATE.pin='';
+  refreshDots();
+  $('pin-err').textContent='';
+  goScreen('sc-welcome');
+}
+
+// ────────────────────────────────────────────────────────
+// SESSIONS
+// ────────────────────────────────────────────────────────
+function mkSeq(){return {seq:'',ressenti:{resp:0,musc:0,psy:0,chal:0},fcFin:'',regulation:''}}
+function mkSess(n){
+  return {num:n,date:'',theme:'',fcCible:'',blocs:'',sequences:[mkSeq()],objectif:'',absent:false};
+}
+function normSess(s,i){
+  s = s||{};
+  if(!s.num) s.num = i+1;
+  s.absent = !!s.absent;
+  if(!Array.isArray(s.sequences)||!s.sequences.length) s.sequences=[mkSeq()];
+  s.sequences.forEach(function(q){
+    if(!q.ressenti||typeof q.ressenti!=='object') q.ressenti={resp:0,musc:0,psy:0,chal:0};
+  });
+  return s;
+}
+function applyCloudData(data){
+  var sess = (data.sessions||[]).map(normSess);
+  STATE.sessions = sess.length ? clone(sess) : [mkSess(1)];
+  var students = S.students();
+  if(students[STATE.student.key]){
+    students[STATE.student.key].sessions = sess;
+    students[STATE.student.key].savedAt = data.savedAt||null;
+    S.saveStudents(students);
+  }
+  renderSessions();
+}
+function loadStudentSessions(fresh){
+  if(!STATE.student) return;
+  var key = STATE.student.key;
+  var stu = S.students()[key];
+  STATE.sessions = stu&&stu.sessions&&stu.sessions.length ? clone(stu.sessions).map(normSess) : [mkSess(1)];
+  if(!S.cloudReady()){ setSyncState('off','Synchronisation cloud non configurée'); return; }
+  if(fresh){ setSyncState('ok','Connecté en ligne · '+fmtDate(new Date())); return; }
+  setSyncState('loading','Chargement en ligne…');
+  API.call('login',{code:STATE.student.code}).then(function(j){
+    if(!STATE.student || STATE.student.key!==key) return;
+    if(j.student.key!==key){ setSyncState('err','Profil inconnu en ligne — sauvegarde pour l\'envoyer'); return; }
+    var cloudAt = j.student.savedAt ? new Date(j.student.savedAt) : new Date(0);
+    var loc = S.students()[key];
+    var localAt = loc && loc.savedAt ? new Date(loc.savedAt) : new Date(0);
+    if(j.student.savedAt && cloudAt >= localAt) applyCloudData({sessions:j.sessions, savedAt:j.student.savedAt});
+    setSyncState('ok','Synchronisé · '+fmtDate(new Date()));
+  }).catch(function(e){
+    console.warn(e);
+    if(/introuvable/i.test(e.message)) setSyncState('off','Pas encore en ligne — sauvegarde pour envoyer ton carnet');
+    else setSyncState('err','Hors ligne — données locales utilisées');
+  });
+}
+
+var THEMES = [
+  'Thème 1 — Puissance Aérobie',
+  'Thème 2 — Capacité Aérobie',
+  'Thème 3 — Endurance Fondamentale'
+];
+var RKEYS = ['resp','musc','psy','chal'];
+var RLBLS = ['Resp.','Musc.','Psy.','🌡️'];
+
+function renderSessions(){
+  var el = $('sessions-list');
+  el.innerHTML = '';
+  STATE.sessions.forEach(function(s,i){ el.appendChild(buildSessCard(s,i)); });
+}
+
+function buildSessCard(s,idx){
+  var div = document.createElement('div');
+  div.className='card';
+  div.id='sess-'+idx;
+  var themeOpts = THEMES.map(function(t){
+    return '<option value="'+esc(t)+'"'+(s.theme===t?' selected':'')+'>'+esc(t)+'</option>';
+  }).join('');
+  var seqHtml = s.sequences.map(function(q,si){return buildSeqCard(idx,si,q);}).join('');
+  var absentBar =
+    '<label style="display:flex;align-items:center;gap:8px;padding:10px 12px;margin-bottom:'+(s.absent?'0':'14px')+
+      ';border-radius:'+(s.absent?'var(--radius-sm) var(--radius-sm) 0 0':'var(--radius-sm)')+
+      ';background:'+(s.absent?'rgba(214,48,49,.12)':'var(--ink)')+';border:1.5px solid '+(s.absent?'var(--r)':'var(--line)')+
+      ';cursor:pointer;font-size:.85rem;font-weight:700;color:'+(s.absent?'var(--r)':'var(--txt2)')+'">'+
+      '<input type="checkbox" style="width:17px;height:17px;accent-color:var(--r)" '+(s.absent?'checked':'')+
+        ' onchange="toggleAbsent('+idx+',this.checked)">'+
+      '🚫 Séance ratée / absent(e)'+
+    '</label>';
+  div.innerHTML =
+    '<div class="card-head">'+
+      '<span class="sess-badge"'+(s.absent?' style="background:var(--r)"':'')+'>Séance '+esc(s.num)+(s.absent?' · Absent(e)':'')+'</span>'+
+      (STATE.sessions.length>1?
+        '<button class="btn btn-danger btn-sm" style="flex-shrink:0;padding:6px 10px" title="Supprimer cette séance" onclick="delSession('+idx+')">🗑️</button>'
+        :'')+
+      '<div class="card-fields">'+
+        '<div class="cf"><div class="cf-label">Date</div>'+
+          '<input type="date" value="'+esc(s.date)+'" oninput="upS('+idx+',\'date\',this.value)"></div>'+
+        (s.absent?'':
+        '<div class="cf" style="min-width:160px"><div class="cf-label">Thème</div>'+
+          '<select onchange="upS('+idx+',\'theme\',this.value)">'+
+            '<option value="">— Choisir —</option>'+themeOpts+'</select></div>'+
+        '<div class="cf" style="max-width:90px"><div class="cf-label">FC Cible</div>'+
+          '<input type="number" inputmode="numeric" value="'+esc(s.fcCible)+'" placeholder="150" oninput="upS('+idx+',\'fcCible\',this.value)"></div>')+
+      '</div>'+
+    '</div>'+
+    '<div class="card-body">'+
+      absentBar+
+      (s.absent ? '' :
+        '<div class="blocs-wrap"><label>🧩 Blocs et Pas travaillés</label>'+
+          '<textarea placeholder="Bloc A — Basic step ×4, Mambo ×2…" oninput="upS('+idx+',\'blocs\',this.value)">'+esc(s.blocs)+'</textarea></div>'+
+        '<div id="seqlist-'+idx+'">'+seqHtml+'</div>'+
+        '<button class="btn btn-secondary btn-sm" style="margin-bottom:14px" onclick="addSeq('+idx+')">＋ Séquence</button>'+
+        '<div class="obj-wrap"><label>🎯 Objectif séance suivante</label>'+
+          '<textarea placeholder="Ex : Création du deuxième bloc — ou — Découverte du thème 1" oninput="upS('+idx+',\'objectif\',this.value)">'+esc(s.objectif)+'</textarea></div>')+
+    '</div>';
+  return div;
+}
+function toggleAbsent(idx,checked){
+  STATE.sessions[idx].absent = checked;
+  renderSessions();
+}
+function delSession(idx){
+  if(STATE.sessions.length<=1){ showToast('Il doit rester au moins une séance','err'); return; }
+  var s = STATE.sessions[idx];
+  if(!confirm('Supprimer définitivement la séance '+s.num+' ?\nCette suppression ne peut pas être annulée.')) return;
+  STATE.sessions.splice(idx,1);
+  renderSessions();
+  // Supprime aussi tout de suite la copie déjà sauvegardée (appareil + cloud),
+  // pour qu'elle ne réapparaisse pas si l'élève quitte sans ré-enregistrer.
+  if(STATE.student){
+    var students=S.students();
+    var stu=students[STATE.student.key];
+    if(stu && stu.sessions && stu.sessions.some(function(es){return String(es.num)===String(s.num)})){
+      stu.sessions=stu.sessions.filter(function(es){return String(es.num)!==String(s.num)});
+      stu.savedAt=new Date().toISOString();
+      S.saveStudents(students);
+      if(S.cloudReady()) cloudSave(STATE.student.key);
+    }
+  }
+  showToast('Séance supprimée');
+}
+
+function buildSeqCard(idx,si,q){
+  var r = q.ressenti||{resp:0,musc:0,psy:0,chal:0};
+  var rpCols = RKEYS.map(function(k,ki){
+    var btns = [1,2,3,4,5].map(function(n){
+      var cls = r[k]===n?' on'+n:'';
+      return '<button class="rb'+cls+'" data-n="'+n+'" onclick="setR('+idx+','+si+',\''+k+'\','+n+',this)">'+n+'</button>';
+    }).join('');
+    return '<div class="res-col"><div class="res-lbl">'+RLBLS[ki]+'</div><div class="res-btns">'+btns+'</div></div>';
+  }).join('');
+  return '<div class="seq-card">'+
+    '<div class="seq-head">'+
+      '<span class="seq-badge">Séq. '+(si+1)+'</span>'+
+      '<input class="seq-input" type="text" value="'+esc(q.seq)+'" placeholder="Ex : 4 × 4 min + R&#39; 2 min" oninput="upQ('+idx+','+si+',\'seq\',this.value)">'+
+      (si>0?'<button class="seq-del-btn" onclick="delSeq('+idx+','+si+')">✕</button>':'')+
+    '</div>'+
+    '<div class="seq-body">'+
+      '<div style="font-size:.6rem;text-transform:uppercase;letter-spacing:.08em;color:var(--txt3);font-weight:700;margin-bottom:6px">Ressenti par dimension</div>'+
+      '<div class="res-grid">'+rpCols+'</div>'+
+      '<div class="seq-fields-row">'+
+        '<div class="sf"><label>FC fin d&#39;effort (bpm)</label><input type="number" inputmode="numeric" value="'+esc(q.fcFin)+'" placeholder="145" oninput="upQ('+idx+','+si+',\'fcFin\',this.value)"></div>'+
+        '<div class="sf"><label>Régulation suivante</label><input type="text" value="'+esc(q.regulation)+'" placeholder="Ex : Augmenter intensité…" oninput="upQ('+idx+','+si+',\'regulation\',this.value)"></div>'+
+      '</div>'+
+    '</div>'+
+  '</div>';
+}
+
+function setR(idx,si,k,n,el){
+  var q = STATE.sessions[idx].sequences[si];
+  if(!q.ressenti) q.ressenti={resp:0,musc:0,psy:0,chal:0};
+  q.ressenti[k] = (q.ressenti[k]===n)?0:n;
+  var nv = q.ressenti[k];
+  el.closest('.res-col').querySelectorAll('.rb').forEach(function(b){
+    var bn = parseInt(b.dataset.n,10);
+    b.className = 'rb'+(nv===bn?' on'+bn:'');
+  });
+}
+function upS(idx,k,v){STATE.sessions[idx][k]=v}
+function upQ(idx,si,k,v){STATE.sessions[idx].sequences[si][k]=v}
+function addSeq(idx){
+  STATE.sessions[idx].sequences.push(mkSeq());
+  renderSessions();
+}
+function delSeq(idx,si){
+  if(STATE.sessions[idx].sequences.length<=1) return;
+  STATE.sessions[idx].sequences.splice(si,1);
+  renderSessions();
+}
+function nextNum(){
+  return STATE.sessions.reduce(function(m,s){return Math.max(m,parseInt(s.num,10)||0)},0)+1;
+}
+function addSession(){
+  STATE.sessions.push(mkSess(nextNum()));
+  renderSessions();
+  setTimeout(function(){
+    $('sessions-list').lastElementChild.scrollIntoView({behavior:'smooth'});
+  },120);
+}
+
+// ────────────────────────────────────────────────────────
+// SAVE
+// ────────────────────────────────────────────────────────
+function buildText(stu, sess){
+  var SEP='==========================================';
+  var t="CARNET D'ENTRAINEMENT STEP\n"+SEP+"\n";
+  t+='Eleve  : '+stu.prenom+' '+stu.nom+'\nClasse : '+(stu.classe||'-')+'\nAnnee  : '+(stu.annee||'-')+'\n'+SEP+'\n\n';
+  sess.forEach(function(s){
+    t+='> SEANCE '+s.num+'  -  '+(s.date||'sans date')+'\n';
+    if(s.absent){
+      t+='  >>> ABSENT(E) A CETTE SEANCE <<<\n\n';
+      return;
+    }
+    t+='  Theme       : '+(s.theme||'-')+'\n';
+    t+='  FC Cible    : '+(s.fcCible||'-')+' bpm\n';
+    t+='  Blocs & Pas : '+(s.blocs||'-')+'\n';
+    (s.sequences||[]).forEach(function(q,i){
+      t+='  Sequence '+(i+1)+'\n';
+      t+='    Travail    : '+(q.seq||'-')+'\n';
+      t+='    Ressenti   : '+(rStr(q.ressenti)||'non renseigne')+'\n';
+      t+='    FC fin     : '+(q.fcFin||'-')+' bpm\n';
+      t+='    Regulation : '+(q.regulation||'-')+'\n';
+    });
+    t+='  Objectif suiv: '+(s.objectif||'-')+'\n\n';
+  });
+  return t;
+}
+function rStr(r){
+  r=r||{};var p=[];
+  if(r.resp)p.push('Resp:'+r.resp);if(r.musc)p.push('Musc:'+r.musc);
+  if(r.psy)p.push('Psy:'+r.psy);if(r.chal)p.push('Chal:'+r.chal);
+  return p.join(', ');
+}
+function cloudSave(key){
+  var stu = S.students()[key];
+  if(!stu) return Promise.resolve(false);
+  setSyncState('loading','Synchronisation…');
+  return API.call('save',{
+    profile:{key:key, code:stu.code, nom:stu.nom, prenom:stu.prenom, classe:stu.classe||'', annee:stu.annee||''},
+    sessions:stu.sessions||[], savedAt:stu.savedAt
+  }).then(function(j){
+    if(j.code && j.code!==stu.code){
+      var st2=S.students(); if(st2[key]){ st2[key].code=j.code; S.saveStudents(st2); }
+      if(STATE.student && STATE.student.key===key) STATE.student.code=j.code;
+      alert('⚠️ Ton code de connexion a changé : '+j.code+'\nNote-le bien !');
+    }
+    setSyncState('ok','Synchronisé · '+fmtDate(new Date()));
+    return true;
+  }).catch(function(e){
+    console.warn(e);
+    setSyncState('err','Sauvegardé sur l\'appareil — envoi en ligne échoué');
+    return false;
+  });
+}
+function saveCarnet(){
+  if(!STATE.student) return;
+  var students = S.students();
+  var key = STATE.student.key;
+  var stu = students[key];
+  if(!stu){showToast('Profil introuvable sur cet appareil','err');return}
+  if(document.activeElement && document.activeElement.blur) document.activeElement.blur();
+  var existing = stu.sessions||[];
+  STATE.sessions.forEach(function(ns){
+    var i = existing.findIndex(function(es){return String(es.num)===String(ns.num)});
+    if(i>=0) existing[i]=clone(ns); else existing.push(clone(ns));
+  });
+  existing.sort(function(a,b){return a.num-b.num});
+  stu.sessions=existing;
+  stu.savedAt=new Date().toISOString();
+  S.saveStudents(students);
+  showToast('Carnet sauvegardé ✓');
+  if(S.cloudReady()) cloudSave(key);
+}
+function doReset(){
+  if(!STATE.student) return;
+  var students=S.students();
+  var stu=students[STATE.student.key];
+  if(stu){
+    stu.sessions=[];
+    stu.savedAt=new Date().toISOString();
+    S.saveStudents(students);
+    if(S.cloudReady()) cloudSave(STATE.student.key);
+  }
+  STATE.sessions=[mkSess(1)];
+  renderSessions();
+  $('confirm-overlay').classList.remove('open');
+  showToast('Carnet réinitialisé');
+}
+
+// ────────────────────────────────────────────────────────
+// HISTORIQUE
+// ────────────────────────────────────────────────────────
+function renderHisto(){
+  var el=$('histo-list');
+  var sub=$('histo-sub');
+  STATE.detailList = [];
+  if(STATE.teacher){
+    sub.textContent='Vue professeur — tous les élèves';
+    renderHistoTeacher(el);
+  } else if(STATE.student){
+    sub.textContent=STATE.student.prenom+' '+STATE.student.nom+(STATE.student.classe?' — '+STATE.student.classe:'');
+    renderHistoStudent(el);
+  }
+}
+function pushDetail(s,nom){STATE.detailList.push({s:s,nom:nom});return STATE.detailList.length-1}
+function renderHistoStudent(el){
+  var stu=S.students()[STATE.student.key];
+  var sess=(stu&&stu.sessions)||[];
+  if(!sess.length){el.innerHTML='<div class="empty"><div class="empty-icon">📂</div><h3>Aucune séance</h3><p>Sauvegarde ton carnet pour voir l&#39;historique ici.</p></div>';return}
+  var nom=STATE.student.prenom+' '+STATE.student.nom;
+  el.innerHTML=sess.map(function(s){
+    var di=pushDetail(s,nom);
+    return '<div class="histo-item" onclick="showDetail('+di+')">'+
+      '<div class="histo-icon"'+(s.absent?' style="background:rgba(214,48,49,.18)"':'')+'>'+(s.absent?'🚫':'📋')+'</div>'+
+      '<div class="histo-info"><div class="histo-num">Séance '+esc(s.num)+'</div>'+
+        '<div class="histo-meta"'+(s.absent?' style="color:var(--r)"':'')+'>'+esc(s.date||'sans date')+' — '+(s.absent?'Absent(e)':esc(s.theme||'—'))+'</div></div>'+
+      '<div class="histo-arr">›</div></div>';
+  }).join('');
+}
+function renderHistoTeacher(el){
+  var students=S.students();
+  var keys=Object.keys(students);
+  var cloudBtn = S.cloudReady() ? '<button class="btn btn-teal btn-sm" style="margin-bottom:12px" onclick="pullAllFromCloud()">☁️ Récupérer depuis le cloud</button>' : '';
+  if(!keys.length){el.innerHTML=cloudBtn+'<div class="empty"><div class="empty-icon">👥</div><h3>Aucun élève</h3><p>Aucun profil sur cet appareil.</p></div>';return}
+  el.innerHTML=cloudBtn+keys.map(function(k,ki){
+    var stu=students[k];
+    var nb=(stu.sessions||[]).length;
+    var saved=stu.savedAt?new Date(stu.savedAt).toLocaleDateString('fr-FR'):'jamais';
+    var nom=stu.prenom+' '+stu.nom;
+    var sessHtml=(stu.sessions||[]).map(function(s){
+      var di=pushDetail(s,nom);
+      return '<div class="te-sess-row" onclick="showDetail('+di+')">'+
+        '<div><div style="font-size:.82rem;font-weight:700;color:'+(s.absent?'var(--r)':'var(--b)')+'">Séance '+esc(s.num)+(s.absent?' · 🚫 Absent(e)':'')+'</div>'+
+          '<div style="font-size:.72rem;color:var(--txt3)">'+esc(s.date||'sans date')+(s.absent?'':' — '+esc(s.theme||'—'))+'</div></div>'+
+        '<button class="btn btn-danger btn-sm" style="font-size:.7rem;padding:5px 10px" data-k="'+esc(k)+'" data-num="'+esc(s.num)+'" onclick="event.stopPropagation();delTeacherSess(this.dataset.k,this.dataset.num)">✕ Suppr.</button>'+
+      '</div>';
+    }).join('');
+    return '<div class="te-block">'+
+      '<div class="te-hdr" onclick="toggleTe('+ki+')">'+
+        '<div>'+
+          '<div class="te-name">'+esc(nom)+'</div>'+
+          '<div class="te-meta">'+esc(stu.classe||'—')+' · '+nb+' séance(s) · sauvegardé '+saved+' · <span class="te-code">'+esc(stu.code)+'</span></div>'+
+        '</div>'+
+        '<div style="display:flex;gap:7px;align-items:center">'+
+          '<button class="btn btn-danger btn-sm" style="font-size:.7rem;padding:5px 10px" data-k="'+esc(k)+'" onclick="event.stopPropagation();delTeacherStudent(this.dataset.k)">🗑️</button>'+
+          '<span id="te-arr-'+ki+'" style="color:var(--txt3)">›</span></div>'+
+      '</div>'+
+      '<div class="te-sessions" id="te-s-'+ki+'">'+
+        (sessHtml||'<p style="font-size:.78rem;color:var(--txt3);padding:4px 0">Aucune séance.</p>')+
+      '</div></div>';
+  }).join('');
+}
+function toggleTe(ki){
+  var el=$('te-s-'+ki), arr=$('te-arr-'+ki);
+  if(!el) return;
+  var open=el.classList.toggle('open');
+  if(arr) arr.textContent=open?'⌄':'›';
+}
+function delTeacherSess(k,num){
+  if(!confirm('Supprimer séance '+num+' ?')) return;
+  var students=S.students();
+  var stu=students[k];
+  if(!stu) return;
+  stu.sessions=(stu.sessions||[]).filter(function(s){return String(s.num)!==String(num)});
+  stu.savedAt=new Date().toISOString();
+  S.saveStudents(students);
+  if(S.cloudReady()) API.call('adminDeleteSession',{key:k,num:num},true).catch(function(e){showToast('Suppression en ligne impossible : '+e.message,'err')});
+  renderHisto();showToast('Séance supprimée');
+}
+function delTeacherStudent(k){
+  if(!confirm('Supprimer cet élève définitivement ?')) return;
+  var students=S.students();
+  delete students[k];
+  S.saveStudents(students);
+  if(S.cloudReady()) API.call('adminDeleteStudent',{key:k},true).catch(function(e){showToast('Suppression en ligne impossible : '+e.message,'err')});
+  if($('page-historique').classList.contains('active')) renderHisto();
+  renderMod();showToast('Élève supprimé');
+}
+function showDetail(di){
+  var item=STATE.detailList[di]; if(!item) return;
+  var s=item.s;
+  $('detail-title').textContent=item.nom+' — Séance '+s.num;
+  if(s.absent){
+    $('detail-body').innerHTML=
+      '<div class="ext-card" style="text-align:center;padding:24px 12px;border-color:var(--r)">'+
+        '<div style="font-size:2rem;margin-bottom:8px">🚫</div>'+
+        '<div style="font-weight:800;color:var(--r);margin-bottom:4px">Absent(e) à cette séance</div>'+
+        '<div style="font-size:.8rem;color:var(--txt3)">'+esc(s.date||'Date non renseignée')+'</div>'+
+      '</div>';
+    openSheet('detail-sheet');
+    return;
+  }
+  var seqH=(s.sequences||[]).map(function(q,i){
+    return '<div style="background:var(--ink4);border-radius:8px;padding:10px;margin-bottom:7px">'+
+      '<div style="font-size:.72rem;font-weight:800;color:var(--b);margin-bottom:6px">Séquence '+(i+1)+'</div>'+
+      '<div class="ext-row"><span>Travail</span><span>'+esc(q.seq||'—')+'</span></div>'+
+      '<div class="ext-row"><span>Ressenti</span><span>'+esc(rStr(q.ressenti)||'—')+'</span></div>'+
+      '<div class="ext-row"><span>FC fin</span><span>'+esc(q.fcFin||'—')+' bpm</span></div>'+
+      '<div class="ext-row"><span>Régulation</span><span>'+esc(q.regulation||'—')+'</span></div></div>';
+  }).join('');
+  $('detail-body').innerHTML=
+    '<div class="ext-card" style="margin-bottom:8px">'+
+      '<div class="ext-row"><span>Date</span><span>'+esc(s.date||'—')+'</span></div>'+
+      '<div class="ext-row"><span>Thème</span><span>'+esc(s.theme||'—')+'</span></div>'+
+      '<div class="ext-row"><span>FC Cible</span><span>'+esc(s.fcCible||'—')+' bpm</span></div>'+
+      '<div class="ext-row"><span>Blocs & Pas</span><span>'+esc(s.blocs||'—')+'</span></div>'+
+    '</div>'+seqH+
+    '<div class="ext-card"><div class="ext-row"><span>Objectif suiv.</span><span>'+esc(s.objectif||'—')+'</span></div></div>';
+  openSheet('detail-sheet');
+}
+
+// ────────────────────────────────────────────────────────
+// ENVOYER
+// ────────────────────────────────────────────────────────
+function currentCarnetText(){
+  if(!STATE.student) return '';
+  var stu=S.students()[STATE.student.key];
+  return buildText(STATE.student,(stu&&stu.sessions)||[]);
+}
+function renderEnvoyer(){
+  var emails=S.emails();
+  var rEl=$('send-recipients');
+  if(emails.length){
+    rEl.innerHTML='<div style="font-size:.65rem;text-transform:uppercase;letter-spacing:.08em;color:var(--txt3);margin-bottom:6px">Destinataires</div>'+
+      emails.map(function(e){return '<span class="recip-tag">'+esc(e)+'</span>';}).join('');
+  } else {
+    rEl.innerHTML='<p style="font-size:.78rem;color:var(--d)">⚠️ Aucun email configuré sur cet appareil. Demande le code classe à ton professeur, ou utilise « Copier le texte ».</p>';
+  }
+  $('send-preview').textContent = STATE.student ? currentCarnetText() : 'Connecte-toi pour voir le carnet.';
+}
+function doSend(){
+  if(!STATE.student) return;
+  var emails=S.emails();
+  if(!emails.length){showToast('Aucun destinataire !','err');return}
+  var msg=$('send-msg').value;
+  var body='Bonjour,\n\n'+(msg?msg+'\n\n':'')+currentCarnetText();
+  var subj='Carnet Step - '+STATE.student.prenom+' '+STATE.student.nom+' - '+(STATE.student.classe||'');
+  var url='mailto:'+emails.join(',')+'?subject='+encodeURIComponent(subj)+'&body='+encodeURIComponent(body);
+  if(url.length>1900){
+    copyText(body,'Carnet long : texte copié, colle-le dans le mail');
+    url='mailto:'+emails.join(',')+'?subject='+encodeURIComponent(subj)+'&body='+encodeURIComponent('Bonjour,\n\n(Colle ici le carnet copié)\n');
+  } else {
+    showToast('Client email ouvert !');
+  }
+  window.location.href=url;
+}
+function copyCarnet(){
+  if(!STATE.student) return;
+  var msg=$('send-msg').value;
+  copyText((msg?msg+'\n\n':'')+currentCarnetText(),'Carnet copié ✓');
+}
+
+// ────────────────────────────────────────────────────────
+// MODÉRATEUR
+// ────────────────────────────────────────────────────────
+function renderMod(){
+  purgeInvalidStudents();
+  renderEmailTags();
+  renderModStudents();
+  $('api-key-status').textContent=S.apiKey()?'✅ Clé configurée':'⚠️ Aucune clé — scan désactivé';
+  $('api-model-inp').value=S.model();
+  var ready=S.cloudReady();
+  $('cloud-pull-btn').style.display=ready?'':'none';
+  $('cloud-push-btn').style.display=(ready&&Object.keys(S.students()).length)?'':'none';
+  $('gs-url-inp').placeholder=S.gsUrl()||'https://script.google.com/macros/s/…/exec';
+  $('gs-token-inp').placeholder=S.gsToken()?'•••• (enregistré)':'';
+  $('gs-admin-inp').placeholder=S.gsAdmin()?'•••• (enregistré)':'';
+  var st=$('jb-status');
+  if(ready){
+    st.className='jb-status '+(S.gsAdmin()?'ok':'info');
+    st.textContent=S.gsAdmin()?'✅ Google Sheet connecté':'✅ Google Sheet connecté — ajoute le mot de passe prof pour récupérer ou supprimer des élèves';
+    st.style.display='block';
+  } else st.style.display='none';
+  updateLastSyncLabel();
+  // Rafraîchit automatiquement la liste depuis le Google Sheet à chaque
+  // ouverture de l'espace Modérateur (sans bloquer l'affichage local déjà visible).
+  if(ready && S.gsAdmin()){
+    syncStudentsFromCloud({silent:true}).then(function(){ renderModStudents(); updateLastSyncLabel(); });
+  }
+}
+// Retire les profils incomplets qui auraient pu être créés par une ancienne
+// version de l'appli ou une coupure réseau pendant l'inscription.
+function purgeInvalidStudents(){
+  var students = S.students(), changed=false, removed=0;
+  Object.keys(students).forEach(function(k){
+    var s=students[k];
+    if(!k || k==='undefined' || !s || !s.nom || !s.prenom || !s.code){
+      delete students[k]; changed=true; removed++;
+    }
+  });
+  if(changed) S.saveStudents(students);
+  return removed;
+}
+function updateLastSyncLabel(){
+  var el=$('mod-lastsync'); if(!el) return;
+  var t=S.g('sc_lastsync');
+  el.textContent = t ? ('Dernière synchro : '+fmtDate(new Date(t))) : (S.cloudReady()?'Pas encore synchronisé':'');
+}
+// Récupère la liste des élèves + leurs carnets depuis le Google Sheet et la
+// fusionne avec les profils présents uniquement sur cet appareil.
+// {silent:true} n'affiche ni toast ni erreur — utilisé pour la synchro automatique.
+function syncStudentsFromCloud(opts){
+  opts = opts||{};
+  if(!S.cloudReady()) return Promise.resolve(null);
+  return API.call('adminList',{},true).then(function(j){
+    var students = {};
+    (j.students||[]).forEach(function(x){ students[x.key]=Object.assign({}, x, {sessions:(x.sessions||[]).map(normSess)}); });
+    var local = S.students(), localOnly = 0;
+    Object.keys(local).forEach(function(k){
+      if(k && k!=='undefined' && local[k] && local[k].key && !students[k]){ students[k]=local[k]; localOnly++; }
+    });
+    S.saveStudents(students);
+    S.s('sc_lastsync', new Date().toISOString());
+    if(!opts.silent) showToast((j.students||[]).length+' élève(s) synchronisé(s)'+(localOnly?' · '+localOnly+' seulement sur cet appareil':''));
+    return {count:(j.students||[]).length, localOnly:localOnly};
+  }).catch(function(e){
+    console.warn(e);
+    if(!opts.silent) showToast('Cloud : '+e.message,'err');
+    return null;
+  });
+}
+function renderEmailTags(){
+  var emails=S.emails();
+  $('email-tags').innerHTML=emails.map(function(e,i){
+    return '<span class="email-tag">'+esc(e)+' <button onclick="removeEmail('+i+')">✕</button></span>';
+  }).join('')||'<span style="font-size:.75rem;color:var(--txt3)">Aucun email.</span>';
+}
+function addEmail(){
+  var inp=$('new-email');
+  var val=inp.value.trim().toLowerCase();
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)){showToast('Email invalide','err');return}
+  var emails=S.emails();
+  if(emails.indexOf(val)>=0){showToast('Déjà dans la liste','err');return}
+  emails.push(val);
+  S.saveEmails(emails);
+  inp.value='';
+  renderEmailTags();
+  showToast('Email ajouté ✓');
+}
+function removeEmail(i){
+  var emails=S.emails();
+  emails.splice(i,1);
+  S.saveEmails(emails);
+  renderEmailTags();
+}
+function saveApiKey(){
+  var v=$('api-key-inp').value.trim();
+  var m=$('api-model-inp').value.trim()||DEFAULT_MODEL;
+  S.s('sc_model',m);
+  if(v){ S.s('sc_apikey',v); $('api-key-inp').value=''; }
+  else if(!S.apiKey()){ showToast('Clé vide','err'); return; }
+  renderMod();
+  showToast('Réglages IA enregistrés ✓');
+}
+function renderModStudents(){
+  var students=S.students();
+  var el=$('mod-students');
+  var keys=Object.keys(students);
+  if(!keys.length){el.innerHTML='<p style="font-size:.78rem;color:var(--txt3)">Aucun élève sur cet appareil.</p>';return}
+  el.innerHTML=keys.map(function(k){
+    var s=students[k];
+    return '<div class="stu-item">'+
+      '<div><div class="stu-name">'+esc(s.prenom+' '+s.nom)+'</div>'+
+        '<div class="stu-meta">'+esc(s.classe||'—')+' · <span class="code-chip">'+esc(s.code)+'</span> · '+(s.sessions||[]).length+' séance(s)'+'</div></div>'+
+      '<button class="btn btn-danger btn-sm" data-k="'+esc(k)+'" onclick="delTeacherStudent(this.dataset.k)">🗑️</button>'+
+    '</div>';
+  }).join('');
+}
+async function pullAllFromCloud(){
+  if(!S.cloudReady()) return;
+  showToast('Récupération en cours…');
+  await syncStudentsFromCloud({silent:false});
+  renderModStudents();
+  updateLastSyncLabel();
+  if($('page-historique').classList.contains('active')) renderHisto();
+}
+async function pushLocalToCloud(){
+  var local = S.students(), keys = Object.keys(local);
+  if(!keys.length){showToast('Aucun élève sur cet appareil','err');return}
+  try{
+    var j = await API.call('adminImport',{students:keys.map(function(k){return Object.assign({},local[k],{key:k})})},true);
+    if(j.changed && j.changed.length){
+      alert('Codes déjà utilisés, remplacés :\n'+j.changed.map(function(c){return c.nom+' : '+c.ancien+' → '+c.nouveau}).join('\n'));
+    }
+    await pullAllFromCloud();
+  }catch(e){
+    showToast('Envoi impossible : '+e.message,'err');
+  }
+}
+
+// ────────────────────────────────────────────────────────
+// SCAN
+// ────────────────────────────────────────────────────────
+function openScanSheet(){
+  var sel=$('scan-target');
+  sel.innerHTML=STATE.sessions.map(function(s,i){
+    return '<option value="'+i+'">Séance '+esc(s.num)+(s.date?' ('+esc(s.date)+')':'')+(s.theme?' — '+esc(s.theme.split('—')[0].trim()):'')+'</option>';
+  }).join('')+'<option value="new">➕ Nouvelle séance</option>';
+  openSheet('scan-sheet');
+  resetScan();
+}
+function resetScan(){
+  STATE.scanB64=null;STATE.scanData=null;
+  $('dz').style.display='block';
+  $('scan-preview').style.display='none';
+  $('scan-prog').style.display='none';
+  $('scan-extracted').style.display='none';
+  $('scan-err').style.display='none';
+  $('scan-file').value='';
+  $('scan-analyze-btn').disabled=false;
+}
+function dzOver(e){e.preventDefault();$('dz').classList.add('over')}
+function dzLeave(){$('dz').classList.remove('over')}
+function dzDrop(e){e.preventDefault();$('dz').classList.remove('over');var f=e.dataTransfer.files[0];if(f&&f.type.indexOf('image/')===0)loadScanFile(f)}
+function dzFile(e){var f=e.target.files[0];if(f)loadScanFile(f)}
+function scanError(msg){
+  $('scan-err').textContent=msg;
+  $('scan-err').style.display='block';
+}
+// Redimensionne et convertit en JPEG (limite de taille API + formats HEIC/WebP)
+function loadScanFile(file){
+  var r=new FileReader();
+  r.onerror=function(){scanError('❌ Impossible de lire ce fichier.')};
+  r.onload=function(e){
+    var img=new Image();
+    img.onload=function(){
+      var MAX=1568, w=img.naturalWidth, h=img.naturalHeight;
+      var ratio=Math.min(1, MAX/Math.max(w,h));
+      var c=document.createElement('canvas');
+      c.width=Math.round(w*ratio); c.height=Math.round(h*ratio);
+      c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+      var url=c.toDataURL('image/jpeg',0.85);
+      STATE.scanB64=url.split(',')[1];
+      STATE.scanMime='image/jpeg';
+      $('scan-img').src=url;
+      $('dz').style.display='none';
+      $('scan-preview').style.display='block';
+      $('scan-prog').style.display='none';
+      $('scan-extracted').style.display='none';
+      $('scan-err').style.display='none';
+    };
+    img.onerror=function(){scanError('❌ Format d\'image non pris en charge par ce navigateur. Essaie en JPEG ou PNG.')};
+    img.src=e.target.result;
+  };
+  r.readAsDataURL(file);
+}
+function extractJSON(text){
+  var clean=text.replace(/```json|```/g,'').trim();
+  try{return JSON.parse(clean)}catch(e){}
+  var a=clean.indexOf('{'), b=clean.lastIndexOf('}');
+  if(a>=0&&b>a) return JSON.parse(clean.slice(a,b+1));
+  throw new Error('no json');
+}
+async function doScan(){
+  var key=S.apiKey();
+  if(!key){
+    $('scan-err').innerHTML='🔑 <strong>Aucune clé API configurée sur cet appareil.</strong><br>Le professeur doit configurer la clé (ou te donner le code classe).';
+    $('scan-err').style.display='block';
+    return;
+  }
+  if(!STATE.scanB64) return;
+  var btn=$('scan-analyze-btn');
+  btn.disabled=true;
+  $('scan-prog').style.display='block';
+  $('scan-extracted').style.display='none';
+  $('scan-err').style.display='none';
+  $('scan-bar').style.width='0';
+  var steps=['Envoi de l\'image…','Lecture de l\'écriture…','Extraction des champs…','Finalisation…'];
+  var si=0,prog=0;
+  var iv=setInterval(function(){
+    prog=Math.min(prog+15,85);
+    $('scan-bar').style.width=prog+'%';
+    if(si<steps.length) $('scan-log').textContent=steps[si++];
+  },700);
+  var prompt='Tu lis un carnet d\'entraînement step (Bac Pro EPS) manuscrit. Extrais les données et réponds UNIQUEMENT avec ce JSON, sans texte autour ni markdown :\n'+
+    '{"num":null,"date":null,"theme":null,"fcCible":null,"blocs":null,"sequences":[{"seq":"","ressenti":{"resp":0,"musc":0,"psy":0,"chal":0},"fcFin":null,"regulation":null}],"objectif":null,"confidence":"haute|moyenne|basse","notes":null}\n'+
+    'Règles : date au format AAAA-MM-JJ. Ressentis : entiers 1 à 5 (resp = respiratoire, musc = musculaire, psy = psychologique, chal = chaleur), 0 si absent ; si une seule note globale est donnée, mets-la dans les 4. '+
+    'Thème : exactement "Thème 1 — Puissance Aérobie", "Thème 2 — Capacité Aérobie" ou "Thème 3 — Endurance Fondamentale". fcCible et fcFin : nombres. Si illisible → null.';
+  try{
+    var res=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'content-type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({model:S.model(),max_tokens:2000,messages:[{role:'user',content:[
+        {type:'image',source:{type:'base64',media_type:STATE.scanMime,data:STATE.scanB64}},
+        {type:'text',text:prompt}
+      ]}]})
+    });
+    if(!res.ok){
+      var err=await res.json().catch(function(){return{}});
+      var m=err.error&&err.error.message?err.error.message:'Erreur API '+res.status;
+      if(res.status===401) m='Clé API invalide ('+m+')';
+      if(res.status===404) m='Modèle introuvable « '+S.model()+' » — change-le dans l\'espace Modérateur.';
+      throw new Error(m);
+    }
+    var data=await res.json();
+    var text=(data.content||[]).map(function(c){return c.text||''}).join('');
+    var parsed;
+    try{parsed=extractJSON(text)}
+    catch(e){throw new Error('Réponse IA invalide. Réessaie avec une image plus nette.')}
+    clearInterval(iv);
+    $('scan-bar').style.width='100%';
+    STATE.scanData=parsed;
+    showScanExtracted(parsed);
+  }catch(e){
+    clearInterval(iv);
+    var msg=e.message;
+    if(e instanceof TypeError) msg='Connexion impossible à l\'API (réseau ou page ouverte dans un environnement qui bloque les requêtes).';
+    scanError('❌ '+msg);
+    btn.disabled=false;
+  }
+  $('scan-prog').style.display='none';
+}
+function normRessenti(r){
+  var clamp=function(v){return Math.min(5,Math.max(0,parseInt(v,10)||0))};
+  if(r&&typeof r==='object') return {resp:clamp(r.resp),musc:clamp(r.musc),psy:clamp(r.psy),chal:clamp(r.chal)};
+  var n=clamp(r); return {resp:n,musc:n,psy:n,chal:n};
+}
+function showScanExtracted(d){
+  $('scan-extracted').style.display='block';
+  var cc=d.confidence==='haute'?'var(--g)':d.confidence==='moyenne'?'var(--d)':'var(--r)';
+  var v=function(val,u){return val!=null&&val!==''?'<span>'+esc(val)+(u||'')+'</span>':'<span style="color:var(--txt3);font-weight:400">—</span>'};
+  var seqH=(d.sequences||[]).map(function(s,i){
+    return '<div class="ext-row"><span>Séq.'+(i+1)+'</span><span style="font-size:.72rem">'+esc((s.seq||'—')+' · '+(rStr(normRessenti(s.ressenti))||'R: —')+' · FC:'+(s.fcFin||'—')+' · '+(s.regulation||'—'))+'</span></div>';
+  }).join('');
+  $('scan-fields').innerHTML=
+    '<div class="ext-row"><span>Confiance</span><span style="color:'+cc+'">● '+esc(d.confidence||'—')+'</span></div>'+
+    '<div class="ext-row"><span>Séance</span>'+v(d.num)+'</div>'+
+    '<div class="ext-row"><span>Date</span>'+v(d.date)+'</div>'+
+    '<div class="ext-row"><span>Thème</span>'+v(d.theme)+'</div>'+
+    '<div class="ext-row"><span>FC Cible</span>'+v(d.fcCible,' bpm')+'</div>'+
+    '<div class="ext-row"><span>Blocs</span>'+v(d.blocs)+'</div>'+
+    seqH+
+    '<div class="ext-row"><span>Objectif</span>'+v(d.objectif)+'</div>'+
+    (d.notes?'<div class="ext-row"><span style="color:var(--d)">⚠️</span><span style="color:var(--d);font-size:.72rem">'+esc(d.notes)+'</span></div>':'');
+}
+function importScan(){
+  if(!STATE.scanData) return;
+  var sel=$('scan-target').value;
+  var idx;
+  if(sel==='new'){STATE.sessions.push(mkSess(nextNum()));idx=STATE.sessions.length-1;}
+  else idx=parseInt(sel,10);
+  var s=STATE.sessions[idx],d=STATE.scanData;
+  if(d.date && /^\d{4}-\d{2}-\d{2}$/.test(d.date)) s.date=d.date;
+  if(d.theme && THEMES.indexOf(d.theme)>=0) s.theme=d.theme;
+  if(d.fcCible!=null) s.fcCible=String(d.fcCible);
+  if(d.blocs) s.blocs=d.blocs;
+  if(d.objectif) s.objectif=d.objectif;
+  if(d.sequences&&d.sequences.length){
+    s.sequences=d.sequences.map(function(q){
+      return{seq:q.seq||'',ressenti:normRessenti(q.ressenti),fcFin:q.fcFin!=null?String(q.fcFin):'',regulation:q.regulation||''};
+    });
+  }
+  renderSessions();
+  closeSheet('scan-sheet');
+  showToast('Importé dans séance '+s.num+' ✓ — pense à sauvegarder');
+  setTimeout(function(){var c=$('sess-'+idx);if(c)c.scrollIntoView({behavior:'smooth',block:'start'})},300);
+}
+
+// ────────────────────────────────────────────────────────
+// CLOUD : Google Apps Script
+// ────────────────────────────────────────────────────────
+var API = {
+  // Un seul appel réseau, sans nouvelle tentative.
+  _raw: function(action, data, admin){
+    var token = admin ? S.gsAdmin() : S.gsToken();
+    if(!S.gsUrl()) return Promise.reject(new Error('Cloud non configuré'));
+    if(admin && !token) return Promise.reject(new Error('Mot de passe prof manquant sur cet appareil'));
+    var body = JSON.stringify(Object.assign({action:action, token:token}, data||{}));
+    // corps en text/plain : pas de pré-requête CORS avec Apps Script
+    var ctrl = window.AbortController ? new AbortController() : null;
+    var timer = ctrl ? setTimeout(function(){ctrl.abort()}, 20000) : null;
+    return fetch(S.gsUrl(), {method:'POST', body:body, redirect:'follow', signal:ctrl?ctrl.signal:undefined})
+      .finally(function(){ if(timer) clearTimeout(timer); })
+      .then(function(r){ if(!r.ok){ var e=new Error('HTTP '+r.status); e.retry=true; throw e; } return r.text(); })
+      .then(function(t){
+        var j;
+        try{ j = JSON.parse(t); }catch(e){ var pe=new Error('Réponse inattendue du script (vérifie le déploiement)'); pe.retry=true; throw pe; }
+        if(!j.ok){ var se=new Error(j.error||'Erreur serveur'); se.retry=!!j.retry; throw se; }
+        return j;
+      }, function(e){
+        if(e && e.name==='AbortError'){ var te=new Error('Le serveur Google ne répond pas (délai dépassé).'); te.retry=true; throw te; }
+        if(e instanceof TypeError){ var ne=new Error('Connexion au Google Sheet impossible : vérifie Internet, et que le script est déployé avec l\'accès « Tout le monde ».'); ne.retry=true; throw ne; }
+        throw e;
+      });
+  },
+  // Avec plusieurs tentatives automatiques : utile quand beaucoup d'élèves
+  // se connectent en même temps (le serveur peut refuser une requête sur deux
+  // le temps de traiter les autres — on réessaie alors tout seul).
+  call: function(action, data, admin, _attempt){
+    _attempt = _attempt || 1;
+    return API._raw(action, data, admin).catch(function(e){
+      if(_attempt >= 4 || !e || !e.retry) throw e;
+      var delay = 600*_attempt + Math.random()*500;
+      return new Promise(function(res){ setTimeout(res, delay); })
+        .then(function(){ return API.call(action, data, admin, _attempt+1); });
+    });
+  }
+};
+
+function initCloud(){
+  var url = $('gs-url-inp').value.trim() || S.gsUrl();
+  var tok = $('gs-token-inp').value.trim() || S.gsToken();
+  var adm = $('gs-admin-inp').value.trim() || S.gsAdmin();
+  var st = $('jb-status');
+  var show = function(cls,msg){ st.className='jb-status '+cls; st.textContent=msg; st.style.display='block'; };
+  if(!/^https:\/\/script\.google\.com\/.+\/exec$/.test(url)){ show('err','❌ URL invalide : elle doit commencer par https://script.google.com/ et finir par /exec'); return; }
+  if(!tok){ show('err','❌ Mot de passe classe requis'); return; }
+  show('info','⏳ Test de connexion…');
+  var prev = [S.gsUrl(), S.gsToken(), S.gsAdmin()];
+  S.s('sc_gsurl',url); S.s('sc_gstoken',tok); S.s('sc_gsadmin',adm);
+  API.call('ping').catch(function(e){
+    throw new Error(/classe incorrect/.test(e.message) ? 'Mot de passe classe incorrect' : e.message);
+  }).then(function(){
+    if(!adm) return;
+    return API.call('ping',{},true).then(function(j){ if(!j.admin) throw 0; })
+      .catch(function(){ throw new Error('Mot de passe prof incorrect'); });
+  }).then(function(){
+    ['gs-url-inp','gs-token-inp','gs-admin-inp'].forEach(function(id){$(id).value=''});
+    renderMod();
+    showToast('☁️ Google Sheet connecté !');
+  }).catch(function(e){
+    S.s('sc_gsurl',prev[0]); S.s('sc_gstoken',prev[1]); S.s('sc_gsadmin',prev[2]);
+    show('err','❌ '+e.message);
+  });
+}
+
+function manualSync(){
+  if(!STATE.student || !S.cloudReady()) return;
+  var key = STATE.student.key;
+  var stu = S.students()[key];
+  if(!stu) return;
+  setSyncState('loading','Synchronisation…');
+  API.call('login',{code:stu.code}).then(function(j){
+    var cloudAt = j.student.savedAt ? new Date(j.student.savedAt) : new Date(0);
+    var localAt = stu.savedAt ? new Date(stu.savedAt) : new Date(0);
+    if(j.student.key===key && cloudAt > localAt){
+      applyCloudData({sessions:j.sessions, savedAt:j.student.savedAt});
+      setSyncState('ok','Mis à jour depuis le cloud · '+fmtDate(new Date()));
+      showToast('Carnet mis à jour depuis le cloud ✓');
+    } else if(localAt > cloudAt){
+      return cloudSave(key).then(function(ok){ if(ok) showToast('Carnet envoyé en ligne ✓'); });
+    } else {
+      setSyncState('ok','Déjà à jour · '+fmtDate(new Date()));
+      showToast('Déjà à jour ✓');
+    }
+  }).catch(function(e){
+    if(/introuvable/i.test(e.message) && stu.savedAt) return cloudSave(key);
+    setSyncState('err','Sync échouée — '+e.message);
+  });
+}
+
+function setSyncState(state, msg){
+  var dot = $('sync-dot');
+  if(!dot) return;
+  dot.className = 'sync-dot '+state;
+  $('sync-msg').textContent = msg;
+  $('sync-btn').style.display = (S.cloudReady() && state !== 'loading') ? '' : 'none';
+}
+function fmtDate(d){
+  return d.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit'})+' '+d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+}
+
+// ────────────────────────────────────────────────────────
+// REFERENTIEL / SHEETS / TOAST
+// ────────────────────────────────────────────────────────
+function showTheme(i, btn){
+  document.querySelectorAll('.theme-panel').forEach(function(p){p.classList.remove('active')});
+  document.querySelectorAll('.ttab').forEach(function(b){b.classList.remove('active')});
+  $('tp-'+i).classList.add('active');
+  btn.classList.add('active');
+}
+function openSheet(id){$(id).classList.add('open')}
+function closeSheet(id){$(id).classList.remove('open')}
+document.querySelectorAll('.sheet-bg').forEach(function(bg){
+  bg.addEventListener('click',function(e){if(e.target===bg)bg.classList.remove('open')});
+});
+var toastT;
+function showToast(msg,type){
+  var t=$('toast');
+  t.textContent=msg;
+  t.className='show '+(type||'ok');
+  clearTimeout(toastT);
+  toastT=setTimeout(function(){t.className=''},3200);
+}
+
+// ────────────────────────────────────────────────────────
+// FILTRES MODÉRATEUR (classe + recherche par nom)
+// Ces fonctions remplacent renderModStudents et renderHistoTeacher
+// définies plus haut (la dernière définition l'emporte). Affichage seulement :
+// aucune donnée n'est modifiée.
+// ────────────────────────────────────────────────────────
+(function(){
+  var st=document.createElement('style');
+  st.textContent=
+    '.mod-filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}'+
+    '.mod-filters input,.mod-filters select{background:var(--ink);border:1.5px solid var(--line);border-radius:var(--radius-sm);padding:10px 12px;color:var(--txt);font-size:.85rem;min-width:0}'+
+    '.mod-filters input{flex:1 1 150px}.mod-filters select{flex:0 1 170px}'+
+    '.mod-filters input:focus,.mod-filters select:focus{outline:none;border-color:var(--a)}'+
+    '.mod-filters select option{background:var(--ink3)}'+
+    '.mod-count{font-size:.72rem;color:var(--txt3);width:100%}';
+  document.head.appendChild(st);
+})();
+
+var FILT={mod:{q:'',classe:''},histo:{q:'',classe:''}};
+function normStr(t){return String(t||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().trim()}
+// "Term GA", "term ga" et "TERM.GA" comptent pour la même classe
+function classKey(c){return normStr(c).replace(/[^a-z0-9]/g,'')}
+function filteredKeys(students,scope){
+  var f=FILT[scope], q=normStr(f.q);
+  return Object.keys(students).filter(function(k){
+    var s=students[k]; if(!s) return false;
+    if(f.classe && classKey(s.classe)!==f.classe) return false;
+    if(q){
+      var a=normStr((s.prenom||'')+' '+(s.nom||'')), b=normStr((s.nom||'')+' '+(s.prenom||''));
+      if(a.indexOf(q)<0 && b.indexOf(q)<0) return false;
+    }
+    return true;
+  }).sort(function(x,y){
+    var a=students[x], b=students[y];
+    return (a.classe||'').localeCompare(b.classe||'','fr',{numeric:true}) ||
+           (a.nom||'').localeCompare(b.nom||'','fr') || (a.prenom||'').localeCompare(b.prenom||'','fr');
+  });
+}
+function buildFilters(scope,box,redraw){
+  var f=FILT[scope], students=S.students(), label={}, order=[];
+  Object.keys(students).forEach(function(k){
+    var c=String(students[k].classe||'').trim(), ck=classKey(c);
+    if(c && ck && !label[ck]){label[ck]=c; order.push(ck);}
+  });
+  order.sort(function(a,b){return label[a].localeCompare(label[b],'fr',{numeric:true})});
+  if(f.classe && !label[f.classe]) f.classe='';
+  var total=Object.keys(students).length;
+  var cnt;
+  var updCount=function(){
+    var n=filteredKeys(students,scope).length;
+    if(cnt) cnt.textContent = n===total ? total+' élève(s)' : n+' élève(s) sur '+total;
+  };
+  // ne reconstruit pas la barre pendant que le prof est en train d'y taper
+  if(box.firstChild && box.contains(document.activeElement)){
+    cnt=box.querySelector('.mod-count'); updCount(); return;
+  }
+  box.innerHTML='';
+  var inp=document.createElement('input');
+  inp.type='search'; inp.placeholder='🔍 Rechercher un élève (nom ou prénom)'; inp.value=f.q;
+  var sel=document.createElement('select');
+  var o0=document.createElement('option'); o0.value=''; o0.textContent='Toutes les classes'; sel.appendChild(o0);
+  order.forEach(function(ck){var o=document.createElement('option'); o.value=ck; o.textContent=label[ck]; sel.appendChild(o);});
+  sel.value=f.classe;
+  var rst=document.createElement('button');
+  rst.className='btn btn-secondary btn-sm'; rst.textContent='✕ Réinitialiser';
+  cnt=document.createElement('div'); cnt.className='mod-count';
+  var onChange=function(){f.q=inp.value; f.classe=sel.value; updCount(); redraw();};
+  inp.addEventListener('input',onChange);
+  sel.addEventListener('change',onChange);
+  rst.addEventListener('click',function(){inp.value=''; sel.value=''; onChange();});
+  box.appendChild(inp); box.appendChild(sel); box.appendChild(rst); box.appendChild(cnt);
+  updCount();
+}
+
+// ── Liste « Élèves inscrits » (page Modérateur)
+function renderModStudents(){
+  var el=$('mod-students'), box=$('mod-filters');
+  if(!box){
+    box=document.createElement('div'); box.id='mod-filters'; box.className='mod-filters';
+    el.parentNode.insertBefore(box,el);
+  }
+  if(!Object.keys(S.students()).length){
+    box.style.display='none';
+    el.innerHTML='<p style="font-size:.78rem;color:var(--txt3)">Aucun élève sur cet appareil.</p>';
+    return;
+  }
+  box.style.display='';
+  buildFilters('mod',box,drawModStudents);
+  drawModStudents();
+}
+function drawModStudents(){
+  var students=S.students(), el=$('mod-students'), keys=filteredKeys(students,'mod');
+  if(!keys.length){el.innerHTML='<p style="font-size:.78rem;color:var(--txt3)">Aucun élève ne correspond aux filtres.</p>';return}
+  el.innerHTML=keys.map(function(k){
+    var s=students[k];
+    return '<div class="stu-item">'+
+      '<div><div class="stu-name">'+esc(s.prenom+' '+s.nom)+'</div>'+
+        '<div class="stu-meta">'+esc(s.classe||'—')+' · <span class="code-chip">'+esc(s.code)+'</span> · '+(s.sessions||[]).length+' séance(s)'+'</div></div>'+
+      '<button class="btn btn-danger btn-sm" data-k="'+esc(k)+'" onclick="delTeacherStudent(this.dataset.k)">🗑️</button>'+
+    '</div>';
+  }).join('');
+}
+
+// ── Historique en mode professeur (les carnets)
+function renderHistoTeacher(el){
+  var students=S.students();
+  var cloudBtn = S.cloudReady() ? '<button class="btn btn-teal btn-sm" style="margin-bottom:12px" onclick="pullAllFromCloud()">☁️ Récupérer depuis le cloud</button>' : '';
+  if(!Object.keys(students).length){el.innerHTML=cloudBtn+'<div class="empty"><div class="empty-icon">👥</div><h3>Aucun élève</h3><p>Aucun profil sur cet appareil.</p></div>';return}
+  el.innerHTML=cloudBtn+'<div id="histo-filters" class="mod-filters"></div><div id="histo-te-list"></div>';
+  buildFilters('histo',$('histo-filters'),drawHistoTeacher);
+  drawHistoTeacher();
+}
+function drawHistoTeacher(){
+  var students=S.students(), el=$('histo-te-list');
+  if(!el) return;
+  STATE.detailList=[];
+  var keys=filteredKeys(students,'histo');
+  if(!keys.length){el.innerHTML='<div class="empty"><div class="empty-icon">🔍</div><h3>Aucun résultat</h3><p>Aucun élève ne correspond aux filtres.</p></div>';return}
+  el.innerHTML=keys.map(function(k,ki){
+    var stu=students[k];
+    var nb=(stu.sessions||[]).length;
+    var saved=stu.savedAt?new Date(stu.savedAt).toLocaleDateString('fr-FR'):'jamais';
+    var nom=stu.prenom+' '+stu.nom;
+    var sessHtml=(stu.sessions||[]).map(function(s){
+      var di=pushDetail(s,nom);
+      return '<div class="te-sess-row" onclick="showDetail('+di+')">'+
+        '<div><div style="font-size:.82rem;font-weight:700;color:'+(s.absent?'var(--r)':'var(--b)')+'">Séance '+esc(s.num)+(s.absent?' · 🚫 Absent(e)':'')+'</div>'+
+          '<div style="font-size:.72rem;color:var(--txt3)">'+esc(s.date||'sans date')+(s.absent?'':' — '+esc(s.theme||'—'))+'</div></div>'+
+        '<button class="btn btn-danger btn-sm" style="font-size:.7rem;padding:5px 10px" data-k="'+esc(k)+'" data-num="'+esc(s.num)+'" onclick="event.stopPropagation();delTeacherSess(this.dataset.k,this.dataset.num)">✕ Suppr.</button>'+
+      '</div>';
+    }).join('');
+    return '<div class="te-block">'+
+      '<div class="te-hdr" onclick="toggleTe('+ki+')">'+
+        '<div>'+
+          '<div class="te-name">'+esc(nom)+'</div>'+
+          '<div class="te-meta">'+esc(stu.classe||'—')+' · '+nb+' séance(s) · sauvegardé '+saved+' · <span class="te-code">'+esc(stu.code)+'</span></div>'+
+        '</div>'+
+        '<div style="display:flex;gap:7px;align-items:center">'+
+          '<button class="btn btn-danger btn-sm" style="font-size:.7rem;padding:5px 10px" data-k="'+esc(k)+'" onclick="event.stopPropagation();delTeacherStudent(this.dataset.k)">🗑️</button>'+
+          '<span id="te-arr-'+ki+'" style="color:var(--txt3)">›</span></div>'+
+      '</div>'+
+      '<div class="te-sessions" id="te-s-'+ki+'">'+
+        (sessHtml||'<p style="font-size:.78rem;color:var(--txt3);padding:4px 0">Aucune séance.</p>')+
+      '</div></div>';
+  }).join('');
+}
+</script>
+</body>
+</html>
