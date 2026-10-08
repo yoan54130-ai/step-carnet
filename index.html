@@ -123,6 +123,7 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min
 .ef-row span:first-child{color:var(--muted)}
 .ef-row span:last-child{font-weight:600;text-align:right;max-width:60%;word-break:break-word}
 .scan-err{background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.25);border-radius:10px;padding:.8rem;margin-top:.8rem;font-size:.82rem;color:#f87171;line-height:1.5}
+.mod-filters{display:flex;gap:.6rem;flex-wrap:wrap;align-items:center;margin-bottom:1rem}.mod-filters .seq-field{width:auto;flex:1;min-width:150px}.mod-filters select.seq-field{flex:0 1 180px}.mod-count{font-size:.75rem;color:var(--muted);width:100%}
 .eleve-block{background:var(--card);border:1px solid var(--border);border-radius:12px;margin-bottom:.8rem;overflow:hidden}
 .eleve-hdr{display:flex;align-items:center;justify-content:space-between;padding:.9rem 1rem;cursor:pointer;gap:.8rem}
 .eleve-hdr:hover{background:var(--surface)}
@@ -401,6 +402,7 @@ tr:nth-child(5) td:not(:first-child){background:rgba(239,68,68,.06)}
   <div class="page" id="page-historique">
     <h1 class="ptitle">Historique</h1>
     <p class="psub" id="histoSub">Tes séances enregistrées</p>
+    <div id="histoFilters" class="mod-filters" style="display:none"></div>
     <div id="histoList"></div>
   </div>
 
@@ -512,6 +514,7 @@ tr:nth-child(5) td:not(:first-child){background:rgba(239,68,68,.06)}
     <div class="mod-section">
       <h3>👥 Élèves et séances</h3>
       <p style="font-size:.8rem;color:var(--muted);margin-bottom:1rem">Clique sur un élève pour voir ses séances.</p>
+      <div id="modFilters" class="mod-filters"></div>
       <div id="modStudentList"></div>
     </div>
   </div>
@@ -792,9 +795,11 @@ async function renderHisto(){
   el.innerHTML='<div style="text-align:center;padding:2rem"><div class="loading-spinner" style="margin:0 auto"></div></div>';
   if(isTeacher){
     sub.textContent='Tous les élèves';
-    var students=await getAllStudents();
-    renderHistoTeacher(el,students);
+    studentsCache=await getAllStudents();
+    initFilters('histo');
+    renderHistoTeacher(el,filterStudents(studentsCache,'histo'));
   }else if(currentStudent){
+    document.getElementById('histoFilters').style.display='none';
     sub.textContent=currentStudent.prenom+' '+currentStudent.nom+' — '+currentStudent.classe;
     var stu=await getStudentByCode(currentStudent.code);
     renderHistoStudent(el,(stu&&stu.sessions)?stu.sessions:[]);
@@ -811,7 +816,7 @@ function renderHistoStudent(el,allSess){
 }
 function renderHistoTeacher(el,students){
   var keys=Object.keys(students);
-  if(!keys.length){el.innerHTML='<div class="empty"><div class="ei">👥</div><h3>Aucun élève</h3><p>Aucun profil créé pour le moment.</p></div>';return;}
+  if(!keys.length){var filtered=Object.keys(studentsCache).length>0;el.innerHTML='<div class="empty"><div class="ei">👥</div><h3>Aucun élève</h3><p>'+(filtered?'Aucun élève ne correspond aux filtres.':'Aucun profil créé pour le moment.')+'</p></div>';return;}
   el.innerHTML=keys.map(function(k){
     var stu=students[k],nb=(stu.sessions||[]).length;
     var sessHtml=(stu.sessions||[]).map(function(s){
@@ -857,6 +862,53 @@ function showSessDetail(el){
 }
 
 // ══════════════════════════════════════════════════════
+// FILTRES (classe + recherche par nom) — affichage seulement, aucune donnée modifiée
+// ══════════════════════════════════════════════════════
+var studentsCache={},filters={histo:{q:'',classe:''},mod:{q:'',classe:''}};
+function normStr(t){return String(t||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();}
+function initFilters(scope){
+  var box=document.getElementById(scope==='histo'?'histoFilters':'modFilters');if(!box)return;
+  var f=filters[scope];
+  var classes=[];Object.keys(studentsCache).forEach(function(k){var c=studentsCache[k].classe;if(c&&classes.indexOf(c)<0)classes.push(c);});
+  classes.sort(function(a,b){return a.localeCompare(b,'fr',{numeric:true});});
+  if(f.classe&&classes.indexOf(f.classe)<0)f.classe='';
+  box.style.display='';box.innerHTML='';
+  var inp=document.createElement('input');inp.type='search';inp.className='seq-field';inp.placeholder='🔍 Rechercher un élève (nom ou prénom)…';inp.value=f.q;
+  var sel=document.createElement('select');sel.className='seq-field';
+  var o0=document.createElement('option');o0.value='';o0.textContent='Toutes les classes';sel.appendChild(o0);
+  classes.forEach(function(c){var o=document.createElement('option');o.value=c;o.textContent=c;sel.appendChild(o);});
+  sel.value=f.classe;
+  var rst=document.createElement('button');rst.className='btn btn-secondary';rst.style.cssText='font-size:.75rem;padding:6px 12px';rst.textContent='✕ Réinitialiser';
+  var cnt=document.createElement('div');cnt.className='mod-count';
+  var upd=function(){f.q=inp.value;f.classe=sel.value;redrawStudents(scope);cnt.textContent=countText(scope);};
+  inp.addEventListener('input',upd);sel.addEventListener('change',upd);
+  rst.addEventListener('click',function(){inp.value='';sel.value='';upd();});
+  box.appendChild(inp);box.appendChild(sel);box.appendChild(rst);box.appendChild(cnt);
+  cnt.textContent=countText(scope);
+}
+function countText(scope){
+  var n=Object.keys(filterStudents(studentsCache,scope)).length,t=Object.keys(studentsCache).length;
+  return n===t?t+' élève(s)':n+' élève(s) sur '+t;
+}
+function filterStudents(students,scope){
+  var f=filters[scope],q=normStr(f.q),out={};
+  Object.keys(students).sort(function(a,b){
+    var x=students[a],y=students[b];
+    return (x.classe||'').localeCompare(y.classe||'','fr',{numeric:true})||(x.nom||'').localeCompare(y.nom||'','fr')||(x.prenom||'').localeCompare(y.prenom||'','fr');
+  }).forEach(function(k){
+    var s=students[k];
+    if(f.classe&&s.classe!==f.classe)return;
+    if(q){var a=normStr(s.prenom+' '+s.nom),b=normStr(s.nom+' '+s.prenom);if(a.indexOf(q)<0&&b.indexOf(q)<0)return;}
+    out[k]=s;
+  });
+  return out;
+}
+function redrawStudents(scope){
+  if(scope==='histo')renderHistoTeacher(document.getElementById('histoList'),filterStudents(studentsCache,'histo'));
+  else drawModStudents();
+}
+
+// ══════════════════════════════════════════════════════
 // MODÉRATEUR
 // ══════════════════════════════════════════════════════
 async function renderModerateur(){
@@ -867,8 +919,14 @@ async function renderModerateur(){
 async function renderModStudents(){
   var el=document.getElementById('modStudentList');if(!el)return;
   el.innerHTML='<div style="text-align:center;padding:1rem"><div class="loading-spinner" style="margin:0 auto"></div></div>';
-  var students=await getAllStudents();var keys=Object.keys(students);
-  if(!keys.length){el.innerHTML='<p style="font-size:.8rem;color:var(--muted)">Aucun élève inscrit.</p>';return;}
+  studentsCache=await getAllStudents();
+  initFilters('mod');
+  drawModStudents();
+}
+function drawModStudents(){
+  var el=document.getElementById('modStudentList');if(!el)return;
+  var students=filterStudents(studentsCache,'mod');var keys=Object.keys(students);
+  if(!keys.length){el.innerHTML='<p style="font-size:.8rem;color:var(--muted)">'+(Object.keys(studentsCache).length?'Aucun élève ne correspond aux filtres.':'Aucun élève inscrit.')+'</p>';return;}
   el.innerHTML='<div class="student-list">'+keys.map(function(k){
     var s=students[k];
     return'<div class="stu-item"><div class="stu-info"><div class="stu-item-name">'+s.prenom+' '+s.nom+'</div><div class="stu-item-meta">'+s.classe+' | Code : <span class="code-badge">'+s.code+'</span> | '+(s.sessions||[]).length+' séance(s)</div></div>'+
